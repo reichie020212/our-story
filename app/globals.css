@@ -1,0 +1,10 @@
+/* Global styles will be lifted from OurStory.html in the next commit. */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
