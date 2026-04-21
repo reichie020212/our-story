@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>StoryTeller — Mobile App Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; font-family: 'Inter', system-ui, sans-serif; }
+  .serif { font-family: 'Fraunces', Georgia, serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="components/ios-frame.jsx"></script>
+<script type="text/babel" src="components/android-frame.jsx"></script>
+<script type="text/babel" src="components/design-canvas.jsx"></script>
+<script type="text/babel">
+
+// Mobile design palette — matches OurStory webapp
+const ACCENT = 'oklch(52% 0.14 35)';
+const ACCENT_SOFT = 'oklch(92% 0.04 35)';
+const PAPER = '#f4ede0';
+const PAPER_ELEV = '#fbf6ec';
+const PAPER_SUNK = '#eadfc9';
+const INK = '#1f1a14';
+const INK_SOFT = '#4a4236';
+const INK_MUTE = '#8a7f6d';
+const RULE = '#d9ccb1';
+const SERIF = "'Fraunces', Georgia, serif";
+const SANS = "'Inter', system-ui, sans-serif";
+const MONO = "'JetBrains Mono', monospace";
+
+// ──────────── Screen components ────────────
+
+function MobileHome() {
+  return (
+    <div style={{ background: PAPER, minHeight: '100%', paddingBottom: 80 }}>
+      {/* header */}
+      <div style={{ padding: '12px 20px 8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: ACCENT, display: 'inline-block' }}></span>
+            <span style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: INK, letterSpacing: '-0.01em' }}>StoryTeller</span>
+          </div>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: `linear-gradient(135deg, ${ACCENT}, ${INK_SOFT})`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: SERIF, fontSize: 14, fontWeight: 500 }}>M</div>
+        </div>
+        {/* search */}
+        <div style={{ background: PAPER_ELEV, border: `1px solid ${RULE}`, borderRadius: 999, padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: INK_MUTE }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          Search stories, tags…
+        </div>
+      </div>
+
+      {/* hero editor's pick */}
+      <div style={{ padding: '12px 20px 0' }}>
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: INK_MUTE, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACCENT, display: 'inline-block' }}></span>
+          Editor's Pick
+        </div>
+        <div style={{ background: PAPER_ELEV, border: `1px solid ${RULE}`, borderRadius: 12, padding: 18, boxShadow: '0 12px 24px -16px rgba(31,26,20,0.2)' }}>
+          <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.15em', textTransform: 'uppercase', color: ACCENT, background: ACCENT_SOFT, padding: '3px 7px', borderRadius: 4 }}>Literary · Flash</span>
+          <h3 style={{ fontFamily: SERIF, fontSize: 22, lineHeight: 1.1, margin: '10px 0 6px', fontWeight: 500, letterSpacing: '-0.01em', color: INK }}>My First Home</h3>
+          <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 12, lineHeight: 1.5, color: INK_SOFT, borderLeft: `2px solid ${ACCENT}`, paddingLeft: 10, margin: '0 0 12px' }}>"A heartbeat, a warm place, a voice singing lullabies — the first morning of a life."</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: INK_MUTE, paddingTop: 10, borderTop: `1px dotted ${RULE}` }}>
+            <span>By <b style={{ color: INK, fontWeight: 500 }}>Mara Solís</b></span>
+            <span>4 min · 12.8k reads</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Banner ad */}
+      <div style={{ margin: '16px 20px', height: 60, background: `repeating-linear-gradient(135deg, ${PAPER_SUNK} 0 8px, transparent 8px 16px)`, border: `1px dashed ${RULE}`, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontSize: 9, letterSpacing: '0.1em', color: INK_MUTE, textTransform: 'uppercase', position: 'relative' }}>
+        <span style={{ position: 'absolute', top: 4, left: 8, fontSize: 8 }}>AD</span>
+        AdMob · 320 × 50 Banner
+      </div>
+
+      {/* genre chips */}
+      <div style={{ padding: '0 20px 12px', display: 'flex', gap: 6, overflowX: 'auto' }}>
+        {[
+          ['All', true, INK],
+          ['Literary', false, 'oklch(52% 0.14 35)'],
+          ['Fantasy', false, 'oklch(52% 0.14 280)'],
+          ['Sci-Fi', false, 'oklch(52% 0.14 200)'],
+          ['Horror', false, 'oklch(42% 0.10 20)'],
+          ['Mystery', false, 'oklch(45% 0.08 250)'],
+        ].map(([label, active, color]) => (
+          <div key={label} style={{
+            padding: '6px 12px', borderRadius: 999, fontSize: 12, whiteSpace: 'nowrap',
+            background: active ? INK : PAPER_ELEV,
+            color: active ? PAPER : color,
+            border: `1px solid ${active ? INK : RULE}`,
+          }}>
+            {!active && <span style={{ display: 'inline-block', width: 5, height: 5, borderRadius: '50%', background: color, marginRight: 5 }}></span>}
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* story list */}
+      <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {[
+          { title: 'The Cartographer of Forgotten Rooms', author: 'Elena Voss', genre: 'Literary', color: 'oklch(52% 0.14 35)', excerpt: "Ines draws maps of places that don't exist anymore. One evening, a stranger asks her to find a room she has never seen.", minutes: 12, views: '8.4k' },
+          { title: 'A Lantern in the Fog', author: 'Rowan Park', genre: 'Horror', color: 'oklch(42% 0.10 20)', excerpt: "In the marsh towns, they say if your light goes out, you're already gone.", minutes: 9, views: '6.2k' },
+          { title: 'Signal From Io', author: 'Dara Chen', genre: 'Sci-Fi', color: 'oklch(52% 0.14 200)', excerpt: "The station hadn't transmitted in eleven years. Then, at 03:14 UTC, it said my name.", minutes: 38, views: '15.2k' },
+        ].map((s, i) => (
+          <div key={i} style={{ background: PAPER_ELEV, border: `1px solid ${RULE}`, borderRadius: 10, padding: 14, position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: s.color, borderRadius: '10px 10px 0 0' }}></div>
+            <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: s.color, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: s.color, display: 'inline-block' }}></span>
+              {s.genre} · {s.minutes} min
+            </div>
+            <h4 style={{ fontFamily: SERIF, fontSize: 17, margin: '0 0 4px', fontWeight: 500, lineHeight: 1.2, color: INK }}>{s.title}</h4>
+            <p style={{ fontSize: 12, color: INK_SOFT, margin: '0 0 10px', lineHeight: 1.5 }}>{s.excerpt}</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: INK_MUTE, fontFamily: MONO, letterSpacing: '0.02em' }}>
+              <span>{s.author}</span>
+              <span>♥ · {s.views} reads</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* bottom tab bar */}
+      <div style={{ position: 'absolute', bottom: 28, left: 0, right: 0, height: 64, background: PAPER_ELEV, borderTop: `1px solid ${RULE}`, display: 'flex', justifyContent: 'space-around', alignItems: 'center', paddingTop: 6 }}>
+        {[
+          ['Home', true, <path key="h" d="M3 12l9-9 9 9v9a2 2 0 01-2 2h-5v-7H10v7H5a2 2 0 01-2-2z"/>],
+          ['Library', false, <path key="l" d="M4 4v16M8 4v16M12 4v16M16 4v16M20 4v16"/>],
+          ['Write', false, <><circle key="c" cx="12" cy="12" r="10"/><path key="p" d="M12 8v8M8 12h8"/></>],
+          ['Saved', false, <path key="s" d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>],
+          ['Me', false, <><circle key="c" cx="12" cy="8" r="4"/><path key="p" d="M4 21a8 8 0 0116 0"/></>],
+        ].map(([label, active, icon]) => (
+          <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? ACCENT : 'none'} stroke={active ? ACCENT : INK_MUTE} strokeWidth="1.8">{icon}</svg>
+            <span style={{ fontSize: 10, color: active ? ACCENT : INK_MUTE, fontWeight: active ? 600 : 400 }}>{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileReader() {
+  return (
+    <div style={{ background: PAPER, minHeight: '100%', position: 'relative' }}>
+      {/* ribbon */}
+      <div style={{ position: 'absolute', top: 0, left: 0, height: 2, background: ACCENT, width: '42%' }}></div>
+      {/* header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: `1px solid ${RULE}` }}>
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: INK_MUTE, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back
+        </div>
+        <div style={{ display: 'flex', gap: 12, color: INK_SOFT }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill={ACCENT} stroke={ACCENT} strokeWidth="1.8"><path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.5 1-1a5.5 5.5 0 000-7.8z"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+        </div>
+      </div>
+
+      <div style={{ padding: '20px 22px 120px' }}>
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: ACCENT, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: ACCENT, display: 'inline-block' }}></span>
+          Literary · 4 min read
+        </div>
+        <h1 style={{ fontFamily: SERIF, fontSize: 36, lineHeight: 1.05, letterSpacing: '-0.02em', margin: '0 0 16px', fontWeight: 400, color: INK }}>My First Home</h1>
+        <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14, lineHeight: 1.5, color: INK_SOFT, borderLeft: `2px solid ${ACCENT}`, paddingLeft: 12, margin: '0 0 20px' }}>A heartbeat, a warm place, a voice singing lullabies — and the first morning of a life.</p>
+        {/* author */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 14, paddingBottom: 14, borderTop: `1px solid ${RULE}`, borderBottom: `1px solid ${RULE}`, marginBottom: 22 }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: `linear-gradient(135deg, ${ACCENT}, ${INK_SOFT})`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: SERIF, fontSize: 15, fontWeight: 500 }}>M</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: INK }}>Mara Solís</div>
+            <div style={{ fontSize: 10, color: INK_MUTE, fontFamily: MONO, letterSpacing: '0.04em' }}>Apr 12, 2026 · 12,847 reads</div>
+          </div>
+          <div style={{ padding: '5px 10px', borderRadius: 999, fontSize: 11, background: ACCENT, color: '#fff', fontWeight: 500 }}>Follow</div>
+        </div>
+        {/* body */}
+        <div style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.75, color: INK }}>
+          <p style={{ fontFamily: MONO, fontSize: 13, color: ACCENT, letterSpacing: '0.2em', textAlign: 'center', margin: '0 0 14px' }}>Duh dum duh dum.</p>
+          <p style={{ margin: '0 0 14px' }}>
+            <span style={{ fontFamily: SERIF, fontSize: '3.8em', float: 'left', lineHeight: 0.82, padding: '0.05em 0.08em 0 0', color: ACCENT, fontWeight: 500 }}>O</span>ne ordinary day, I was playing with my friends when a blinding light came out of nowhere and consumed me.
+          </p>
+          <p style={{ fontFamily: MONO, fontSize: 13, color: ACCENT, letterSpacing: '0.2em', textAlign: 'center', margin: '16px 0' }}>Duh dum… duh dum…</p>
+          <p style={{ margin: '0 0 14px' }}>I woke up, and it was so dark I felt scared — but there was a sound, so loud and steady, that I kept hearing it. Somehow, it gave me comfort.</p>
+          {/* Inline portrait image — matches web image block system */}
+          <figure style={{ margin: '18px 0', borderRadius: 8, overflow: 'hidden', border: `1px solid ${RULE}`, background: PAPER_ELEV }}>
+            <div style={{ aspectRatio: '4/5', background: `linear-gradient(135deg, ${ACCENT_SOFT}, ${PAPER_SUNK})`, position: 'relative' }}>
+              <svg viewBox="0 0 400 500" style={{ width: '100%', height: '100%', display: 'block' }}>
+                <defs><radialGradient id="mw" cx="50%" cy="35%" r="40%"><stop offset="0%" stopColor="#fff" stopOpacity="0.5"/><stop offset="100%" stopColor="#fff" stopOpacity="0"/></radialGradient></defs>
+                <rect width="400" height="500" fill="oklch(92% 0.04 35)"/>
+                <circle cx="200" cy="170" r="70" fill="oklch(65% 0.11 35)"/>
+                <path d="M110 500 Q110 320 200 320 Q290 320 290 500 Z" fill="oklch(52% 0.14 35)"/>
+                <circle cx="200" cy="180" r="100" fill="url(#mw)"/>
+              </svg>
+            </div>
+            <div style={{ padding: '10px 14px' }}>
+              <div style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 500, color: INK }}>Mother</div>
+              <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.12em', color: INK_MUTE, textTransform: 'uppercase', marginTop: 2 }}>The Voice</div>
+              <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 12, color: INK_SOFT, marginTop: 6 }}>I knew her before I saw her.</div>
+            </div>
+          </figure>
+        </div>
+        {/* mid-story ad */}
+        <div style={{ marginTop: 24, height: 180, background: `repeating-linear-gradient(135deg, ${PAPER_SUNK} 0 8px, transparent 8px 16px)`, border: `1px dashed ${RULE}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: INK_MUTE, textTransform: 'uppercase', position: 'relative' }}>
+          <span style={{ position: 'absolute', top: 6, left: 8, fontSize: 8 }}>AD</span>
+          AdMob Native · 300 × 250
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileCompose() {
+  return (
+    <div style={{ background: PAPER, minHeight: '100%' }}>
+      {/* header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: `1px solid ${RULE}`, background: PAPER_ELEV }}>
+        <span style={{ fontSize: 13, color: INK_MUTE }}>Cancel</span>
+        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.12em', color: ACCENT, background: ACCENT_SOFT, padding: '3px 8px', borderRadius: 999, textTransform: 'uppercase' }}>✓ Saved</span>
+        <span style={{ fontSize: 13, color: ACCENT, fontWeight: 600 }}>Publish</span>
+      </div>
+      <div style={{ padding: '22px 22px 100px' }}>
+        <input placeholder="Title…" readOnly defaultValue="The Night Train" style={{ fontFamily: SERIF, fontSize: 30, lineHeight: 1.1, letterSpacing: '-0.02em', border: 0, width: '100%', background: 'transparent', padding: 0, margin: '0 0 12px', color: INK, fontWeight: 400, outline: 0 }} />
+        <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14, color: INK_SOFT, borderLeft: `2px solid ${ACCENT}`, paddingLeft: 10, marginBottom: 20, lineHeight: 1.5 }}>A conductor who remembers every passenger, and the one who never arrived.</div>
+
+        <div style={{ fontFamily: SERIF, fontSize: 16, lineHeight: 1.7, color: INK }}>
+          <p style={{ margin: '0 0 14px' }}>The 11:47 to Harlech has been my route for eleven years. In that time I have punched exactly forty-one thousand two hundred and sixteen tickets — I count them, every one —</p>
+          <p style={{ margin: '0 0 14px', color: INK_MUTE }}><span style={{ borderBottom: `1.5px solid ${ACCENT}`, paddingBottom: 2 }}>and only one passenger has never reached the end of the line.</span></p>
+        </div>
+
+        {/* chips */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 22, paddingTop: 16, borderTop: `1px dotted ${RULE}` }}>
+          <span style={{ fontSize: 10, padding: '4px 8px', borderRadius: 4, background: ACCENT_SOFT, color: ACCENT, fontFamily: MONO, letterSpacing: '0.02em' }}>#trains</span>
+          <span style={{ fontSize: 10, padding: '4px 8px', borderRadius: 4, background: ACCENT_SOFT, color: ACCENT, fontFamily: MONO, letterSpacing: '0.02em' }}>#memory</span>
+          <span style={{ fontSize: 10, padding: '4px 8px', borderRadius: 4, background: PAPER_SUNK, color: INK_MUTE, fontFamily: MONO, letterSpacing: '0.02em', border: `1px dashed ${RULE}` }}>+ add tag</span>
+        </div>
+
+        <div style={{ marginTop: 18, padding: 12, background: PAPER_ELEV, border: `1px solid ${RULE}`, borderRadius: 8, display: 'flex', justifyContent: 'space-between', fontSize: 11, fontFamily: MONO, color: INK_MUTE, letterSpacing: '0.02em' }}>
+          <span>Genre · <b style={{ color: INK, fontWeight: 500 }}>Literary</b></span>
+          <span>Length · <b style={{ color: INK, fontWeight: 500 }}>Flash</b></span>
+          <span>142 words</span>
+        </div>
+      </div>
+      {/* formatting toolbar */}
+      <div style={{ position: 'absolute', bottom: 60, left: 0, right: 0, background: PAPER_ELEV, borderTop: `1px solid ${RULE}`, display: 'flex', padding: '8px 16px', gap: 14, justifyContent: 'space-around' }}>
+        {['B','I','U','"','H','⋯'].map(l => (
+          <div key={l} style={{ width: 34, height: 34, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: INK_SOFT, fontWeight: l === 'B' ? 700 : 400, fontStyle: l === 'I' ? 'italic' : 'normal', textDecoration: l === 'U' ? 'underline' : 'none', fontFamily: l === 'H' ? SERIF : SANS }}>{l}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileProfile() {
+  return (
+    <div style={{ background: PAPER, minHeight: '100%' }}>
+      <div style={{ padding: '24px 22px 20px', borderBottom: `1px solid ${RULE}`, position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: `linear-gradient(135deg, ${ACCENT}, ${INK_SOFT})`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: SERIF, fontSize: 26, fontWeight: 500 }}>M</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 500, color: INK, letterSpacing: '-0.01em' }}>Mara Solís</div>
+            <div style={{ fontFamily: MONO, fontSize: 11, color: INK_MUTE, letterSpacing: '0.02em' }}>@mara · joined Apr 2026</div>
+          </div>
+        </div>
+        <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 13, color: INK_SOFT, margin: '0 0 14px', lineHeight: 1.5 }}>Writing flash fiction about the small, warm moments. Believer in quiet prose.</p>
+        <div style={{ display: 'flex', gap: 20, paddingTop: 14, borderTop: `1px solid ${RULE}` }}>
+          {[['12', 'stories'], ['1.2k', 'followers'], ['42k', 'reads']].map(([n, l]) => (
+            <div key={l}>
+              <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: INK, letterSpacing: '-0.01em' }}>{n}</div>
+              <div style={{ fontSize: 10, color: INK_MUTE, fontFamily: MONO, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* tabs */}
+      <div style={{ display: 'flex', padding: '0 22px', borderBottom: `1px solid ${RULE}` }}>
+        {['Published', 'Drafts', 'Bookmarks'].map((t, i) => (
+          <div key={t} style={{ padding: '14px 0', marginRight: 22, fontSize: 13, color: i === 0 ? INK : INK_MUTE, fontWeight: i === 0 ? 500 : 400, borderBottom: i === 0 ? `2px solid ${ACCENT}` : 'none' }}>{t}</div>
+        ))}
+      </div>
+      <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {[
+          { t: 'My First Home', d: 'Apr 12 · 12.8k reads', g: ACCENT },
+          { t: 'The Letter I Burned', d: 'Mar 28 · 3.2k reads', g: 'oklch(52% 0.14 280)' },
+          { t: 'Rain on the Old Roof', d: 'Mar 15 · 1.8k reads', g: ACCENT },
+        ].map((s, i) => (
+          <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <div style={{ width: 4, alignSelf: 'stretch', background: s.g, borderRadius: 2 }}></div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: INK, marginBottom: 2 }}>{s.t}</div>
+              <div style={{ fontSize: 11, color: INK_MUTE, fontFamily: MONO, letterSpacing: '0.02em' }}>{s.d}</div>
+            </div>
+            <span style={{ fontSize: 10, padding: '3px 7px', borderRadius: 4, background: ACCENT_SOFT, color: ACCENT, fontFamily: MONO, letterSpacing: '0.02em' }}>Published</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileSignIn() {
+  return (
+    <div style={{ background: PAPER, minHeight: '100%', padding: '32px 24px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 32 }}>
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: ACCENT, display: 'inline-block' }}></span>
+        <span style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: INK }}>StoryTeller</span>
+      </div>
+      <h1 style={{ fontFamily: SERIF, fontSize: 34, lineHeight: 1.05, letterSpacing: '-0.02em', margin: '0 0 10px', fontWeight: 400, color: INK }}>Welcome back.</h1>
+      <p style={{ fontSize: 14, color: INK_SOFT, margin: '0 0 28px', lineHeight: 1.5 }}>Sign in to pick up your drafts and bookmarks across devices.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div>
+          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: INK_MUTE, marginBottom: 5 }}>Email</div>
+          <div style={{ padding: '11px 14px', background: PAPER_ELEV, border: `1px solid ${ACCENT}`, borderRadius: 8, fontSize: 14, color: INK }}>mara@storyteller.app</div>
+        </div>
+        <div>
+          <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: INK_MUTE, marginBottom: 5 }}>Password</div>
+          <div style={{ padding: '11px 14px', background: PAPER_ELEV, border: `1px solid ${RULE}`, borderRadius: 8, fontSize: 14, color: INK_MUTE }}>••••••••••</div>
+        </div>
+        <div style={{ padding: 12, borderRadius: 999, background: INK, color: PAPER, textAlign: 'center', fontSize: 14, fontWeight: 500, marginTop: 6 }}>Sign in</div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '22px 0' }}>
+        <div style={{ flex: 1, height: 1, background: RULE }}></div>
+        <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.15em', color: INK_MUTE, textTransform: 'uppercase' }}>or</span>
+        <div style={{ flex: 1, height: 1, background: RULE }}></div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+        <div style={{ padding: 12, border: `1px solid ${RULE}`, borderRadius: 8, textAlign: 'center', fontSize: 13, color: INK }}>Continue with Google</div>
+        <div style={{ padding: 12, border: `1px solid ${RULE}`, borderRadius: 8, textAlign: 'center', fontSize: 13, color: INK }}>Continue with Apple</div>
+      </div>
+      <p style={{ fontSize: 11, color: INK_MUTE, margin: '28px 0 0', lineHeight: 1.5, fontFamily: SERIF, fontStyle: 'italic', textAlign: 'center' }}>Reading on StoryTeller never requires an account.</p>
+    </div>
+  );
+}
+
+function MobileAbout() {
+  return (
+    <div style={{ background: PAPER, minHeight: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', borderBottom: `1px solid ${RULE}` }}>
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', color: INK_MUTE, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Settings
+        </div>
+        <div style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 500, color: INK }}>About</div>
+        <div style={{ width: 40 }}></div>
+      </div>
+      <div style={{ padding: '28px 22px 40px', textAlign: 'center' }}>
+        <div style={{ width: 88, height: 88, borderRadius: '50%', margin: '0 auto 16px', background: `linear-gradient(135deg, ${ACCENT}, ${INK_SOFT})`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: SERIF, fontSize: 38, fontWeight: 500, boxShadow: '0 20px 40px -16px rgba(31,26,20,0.35)' }}>R</div>
+        <div style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 500, color: INK, letterSpacing: '-0.01em', marginBottom: 4 }}>Red Butay</div>
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: INK_MUTE, marginBottom: 14 }}>Software Engineer · Bulacan, PH</div>
+        <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 14, color: INK_SOFT, lineHeight: 1.5, margin: '0 auto', maxWidth: 280 }}>"StoryTeller is a space for readers and writers — a quiet shelf where original stories can be kept."</p>
+      </div>
+      <div style={{ padding: '0 16px' }}>
+        <div style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: INK_MUTE, padding: '0 6px 8px' }}>Contact</div>
+        <div style={{ background: PAPER_ELEV, border: `1px solid ${RULE}`, borderRadius: 12, overflow: 'hidden' }}>
+          {[
+            ['Email', 'redickbutay02@gmail.com'],
+            ['GitHub', '@reichie020212'],
+            ['LinkedIn', 'in/redick-butay'],
+            ['Facebook', 'redick.butay02'],
+          ].map(([label, val], i, arr) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: i < arr.length - 1 ? `1px dotted ${RULE}` : 'none' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: INK_MUTE, marginBottom: 2 }}>{label}</div>
+                <div style={{ fontFamily: SERIF, fontSize: 14, color: INK, letterSpacing: '-0.01em' }}>{val}</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={INK_MUTE} strokeWidth="2"><path d="M7 17L17 7M8 7h9v9"/></svg>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 12, color: INK_MUTE, textAlign: 'center', marginTop: 24 }}>
+          Version 1.0.0 · build 1<br/>© 2026 · developed by Red Butay
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileOffline() {
+  return (
+    <div style={{ background: PAPER, minHeight: '100%', padding: '20px 22px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={INK} strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <span style={{ fontFamily: MONO, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: INK_MUTE }}>Downloads</span>
+        </div>
+      </div>
+      <h1 style={{ fontFamily: SERIF, fontSize: 34, lineHeight: 1.05, letterSpacing: '-0.02em', margin: '0 0 6px', fontWeight: 400 }}>Offline library</h1>
+      <p style={{ fontSize: 13, color: INK_SOFT, margin: '0 0 24px', lineHeight: 1.5 }}>4 stories · 2.1 MB · available on airplane mode</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {[
+          { t: 'My First Home', s: 'Mara Solís · 4 min', p: 100, c: ACCENT },
+          { t: 'Signal From Io', s: 'Dara Chen · 38 min', p: 62, c: 'oklch(52% 0.14 200)' },
+          { t: 'The Bookbinder\u2019s Apprentice', s: 'Hana Okafor · 14 min', p: 100, c: 'oklch(52% 0.14 280)' },
+          { t: 'A Lantern in the Fog', s: 'Rowan Park · 9 min', p: 0, c: 'oklch(42% 0.10 20)' },
+        ].map((s, i) => (
+          <div key={i} style={{ background: PAPER_ELEV, border: `1px solid ${RULE}`, borderRadius: 10, padding: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 500, color: INK, marginBottom: 3 }}>{s.t}</div>
+                <div style={{ fontSize: 11, color: INK_MUTE, fontFamily: MONO, letterSpacing: '0.02em' }}>{s.s}</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill={s.p === 100 ? ACCENT : 'none'} stroke={s.p === 100 ? ACCENT : INK_MUTE} strokeWidth="2">
+                {s.p === 100 ? <path d="M20 6L9 17l-5-5"/> : <><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></>}
+              </svg>
+            </div>
+            <div style={{ height: 3, background: PAPER_SUNK, borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: s.p + '%', background: s.c, borderRadius: 2 }}></div>
+            </div>
+            <div style={{ fontSize: 10, color: INK_MUTE, fontFamily: MONO, letterSpacing: '0.05em', marginTop: 6, textTransform: 'uppercase' }}>
+              {s.p === 100 ? 'Downloaded · ready offline' : s.p === 0 ? 'Saved for later' : `Read ${s.p}%`}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Android variant — Material 3 styled home
+function AndroidHome() {
+  return (
+    <div style={{ background: PAPER, minHeight: '100%', paddingBottom: 80 }}>
+      <div style={{ padding: '8px 16px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: ACCENT, display: 'inline-block' }}></span>
+            <span style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 500, color: INK, letterSpacing: '-0.01em' }}>StoryTeller</span>
+          </div>
+          <div style={{ display: 'flex', gap: 14, color: INK_SOFT }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: `linear-gradient(135deg, ${ACCENT}, ${INK_SOFT})`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: SERIF, fontSize: 13, fontWeight: 500 }}>M</div>
+          </div>
+        </div>
+        <h1 style={{ fontFamily: SERIF, fontSize: 30, lineHeight: 1.05, letterSpacing: '-0.02em', margin: '8px 0 18px', fontWeight: 400 }}>For you, today.</h1>
+
+        {/* featured */}
+        <div style={{ background: PAPER_ELEV, borderRadius: 16, padding: 16, marginBottom: 14, boxShadow: '0 1px 2px rgba(31,26,20,0.06)' }}>
+          <span style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.15em', color: ACCENT, background: ACCENT_SOFT, padding: '3px 7px', borderRadius: 4, textTransform: 'uppercase' }}>Editor's Pick</span>
+          <h3 style={{ fontFamily: SERIF, fontSize: 22, lineHeight: 1.1, margin: '10px 0 6px', fontWeight: 500, letterSpacing: '-0.01em' }}>My First Home</h3>
+          <p style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: 12, lineHeight: 1.5, color: INK_SOFT, margin: '0 0 10px' }}>"A heartbeat, a warm place — the first morning of a life."</p>
+          <div style={{ fontSize: 11, color: INK_MUTE, fontFamily: MONO, letterSpacing: '0.02em' }}>By <b style={{ color: INK, fontWeight: 500 }}>Mara Solís</b> · 4 min · 12.8k reads</div>
+        </div>
+
+        {/* ad */}
+        <div style={{ height: 60, background: `repeating-linear-gradient(135deg, ${PAPER_SUNK} 0 8px, transparent 8px 16px)`, border: `1px dashed ${RULE}`, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontSize: 9, letterSpacing: '0.1em', color: INK_MUTE, textTransform: 'uppercase', position: 'relative', marginBottom: 16 }}>
+          <span style={{ position: 'absolute', top: 4, left: 8, fontSize: 8 }}>AD</span>
+          AdMob · 320 × 50
+        </div>
+
+        {/* chips */}
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', marginBottom: 16 }}>
+          {[['All', true], ['Fantasy', false], ['Sci-Fi', false], ['Romance', false], ['Horror', false]].map(([l, a]) => (
+            <div key={l} style={{ padding: '6px 14px', borderRadius: 8, fontSize: 13, whiteSpace: 'nowrap', background: a ? ACCENT_SOFT : PAPER_ELEV, color: a ? ACCENT : INK_SOFT, border: `1px solid ${a ? ACCENT : RULE}`, fontWeight: a ? 500 : 400 }}>{l}</div>
+          ))}
+        </div>
+
+        {/* cards */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {[
+            { title: 'The Cartographer of Forgotten Rooms', author: 'Elena Voss', genre: 'Literary', color: ACCENT, m: 12 },
+            { title: 'Signal From Io', author: 'Dara Chen', genre: 'Sci-Fi', color: 'oklch(52% 0.14 200)', m: 38 },
+            { title: 'Two Trains, One Platform', author: 'Priya Shah', genre: 'Romance', color: 'oklch(60% 0.14 10)', m: 5 },
+          ].map((s, i) => (
+            <div key={i} style={{ background: PAPER_ELEV, borderRadius: 12, padding: 14, display: 'flex', gap: 12 }}>
+              <div style={{ width: 4, background: s.color, borderRadius: 2, alignSelf: 'stretch' }}></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: MONO, fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: s.color, marginBottom: 4 }}>{s.genre} · {s.m} min</div>
+                <h4 style={{ fontFamily: SERIF, fontSize: 16, margin: '0 0 3px', fontWeight: 500, lineHeight: 1.2 }}>{s.title}</h4>
+                <div style={{ fontSize: 11, color: INK_MUTE, fontFamily: MONO, letterSpacing: '0.02em' }}>{s.author}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* bottom bar */}
+      <div style={{ position: 'absolute', bottom: 24, left: 0, right: 0, height: 80, background: PAPER_ELEV, display: 'flex', justifyContent: 'space-around', alignItems: 'center', paddingTop: 12, borderTop: `1px solid ${RULE}` }}>
+        {['Home', 'Library', 'Write', 'Saved', 'Me'].map((l, i) => (
+          <div key={l} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+            <div style={{ padding: '4px 16px', borderRadius: 14, background: i === 0 ? ACCENT_SOFT : 'transparent' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill={i === 0 ? ACCENT : 'none'} stroke={i === 0 ? ACCENT : INK_SOFT} strokeWidth="2"><circle cx="12" cy="12" r="9"/></svg>
+            </div>
+            <span style={{ fontSize: 10, color: i === 0 ? ACCENT : INK_SOFT, fontWeight: i === 0 ? 600 : 400 }}>{l}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ──────────── Canvas Layout ────────────
+
+function App() {
+  return (
+    <DesignCanvas minScale={0.2} maxScale={2}>
+      <div style={{ padding: '40px 60px 60px', maxWidth: 'max-content' }}>
+        <h1 style={{ fontFamily: SERIF, fontSize: 44, margin: '0 0 6px', fontWeight: 500, letterSpacing: '-0.02em', color: '#2a2014' }}>
+          StoryTeller — Mobile App
+        </h1>
+        <p style={{ fontSize: 14, color: 'rgba(60,50,40,0.7)', margin: '0 0 40px', maxWidth: 700, lineHeight: 1.5 }}>
+          Companion app sharing the same backend + account system as the webapp. Same stories, same login, same design language — reshaped for touch. Reading is anonymous; writing requires sign-in.
+        </p>
+
+        <DCSection title="iOS" subtitle="Liquid-glass nav, drop-cap reader, native tab bar" gap={56}>
+          <DCArtboard label="Home · Browse" width={402} height={874}>
+            <IOSDevice width={402} height={874}><MobileHome /></IOSDevice>
+          </DCArtboard>
+          <DCArtboard label="Story Reader" width={402} height={874}>
+            <IOSDevice width={402} height={874}><MobileReader /></IOSDevice>
+          </DCArtboard>
+          <DCArtboard label="Compose · Sign-in required" width={402} height={874}>
+            <IOSDevice width={402} height={874}><MobileCompose /></IOSDevice>
+          </DCArtboard>
+          <DCArtboard label="Author Profile" width={402} height={874}>
+            <IOSDevice width={402} height={874}><MobileProfile /></IOSDevice>
+          </DCArtboard>
+          <DCArtboard label="Sign In · same account as web" width={402} height={874}>
+            <IOSDevice width={402} height={874}><MobileSignIn /></IOSDevice>
+          </DCArtboard>
+          <DCArtboard label="Offline Library · mobile-only" width={402} height={874}>
+            <IOSDevice width={402} height={874}><MobileOffline /></IOSDevice>
+          </DCArtboard>
+          <DCArtboard label="About · Developer credits" width={402} height={874}>
+            <IOSDevice width={402} height={874}><MobileAbout /></IOSDevice>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection title="Android" subtitle="Material 3 styling of the same screens" gap={56}>
+          <DCArtboard label="Home (Material 3)" width={412} height={892}>
+            <AndroidDevice width={412} height={892}><AndroidHome /></AndroidDevice>
+          </DCArtboard>
+          <DCArtboard label="Reader (Material 3)" width={412} height={892}>
+            <AndroidDevice width={412} height={892}><MobileReader /></AndroidDevice>
+          </DCArtboard>
+          <DCArtboard label="Profile (Material 3)" width={412} height={892}>
+            <AndroidDevice width={412} height={892}><MobileProfile /></AndroidDevice>
+          </DCArtboard>
+        </DCSection>
+
+        <DCPostIt top={180} left={32} rotate={-3} width={220}>
+          Same backend API as webapp. Story added on mobile → instantly visible on web, and vice versa.
+        </DCPostIt>
+        <DCPostIt top={480} right={40} rotate={2} width={200}>
+          AdMob banner (320×50) lives above tab bar. Mid-story native ads between paragraph clusters.
+        </DCPostIt>
+      </div>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+</script>
+</body>
+</html>
