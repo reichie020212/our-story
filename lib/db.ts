@@ -1,12 +1,16 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
-// Prisma client singleton. Next.js dev rebuilds re-import this module
-// many times during HMR; caching on globalThis stops us from leaking
-// Postgres connections every reload.
+// Prisma client singleton, constructed lazily so importing this module
+// at build time (e.g. during Next.js's "collecting page data" pass)
+// doesn't crash when DATABASE_URL hasn't been set yet.
 //
-// Prisma 7 requires a driver adapter. We always use the pooled URL at
-// runtime; the unpooled DATABASE_URL_DIRECT is reserved for Migrate
+// Caching on globalThis keeps Next.js dev HMR from leaking Postgres
+// connections — every reload re-imports this module, but the same
+// PrismaClient instance survives.
+//
+// Prisma 7 requires a driver adapter; we always use the pooled URL at
+// runtime. The unpooled DATABASE_URL_DIRECT is reserved for Migrate
 // (configured in prisma.config.ts).
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -29,6 +33,18 @@ function makeClient(): PrismaClient {
   });
 }
 
-export const db: PrismaClient = globalForPrisma.prisma ?? makeClient();
+function getClient(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = makeClient();
+  }
+  return globalForPrisma.prisma;
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+// Proxy so callers can write `db.user.findUnique(...)` exactly as if
+// `db` were a plain PrismaClient — but the real client is only created
+// the first time a property is read.
+export const db: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    return Reflect.get(getClient() as object, prop);
+  },
+});

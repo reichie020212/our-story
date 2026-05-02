@@ -11,11 +11,11 @@ import {
 } from "react";
 
 export type User = {
+  id: string;
   email: string;
   name: string;
   initial: string;
   handle: string;
-  joined: string;
 };
 
 export type AuthReason = "write" | null;
@@ -27,9 +27,10 @@ export type AuthModalState =
 
 type AuthContextValue = {
   user: User | null;
-  signIn: (email: string, password: string) => User;
-  signUp: (email: string, password: string, name?: string) => User;
-  signOut: () => void;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<User>;
+  signUp: (email: string, password: string, name: string) => Promise<User>;
+  signOut: () => Promise<void>;
   modal: AuthModalState;
   setModal: (state: AuthModalState) => void;
   requireAuth: (action?: AuthReason) => boolean;
@@ -43,59 +44,84 @@ export function useAuth(): AuthContextValue {
   return ctx;
 }
 
-const titleCase = (s: string) =>
-  s.replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+type ApiError = { error: { code: string; message: string } };
+
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => null)) as ApiError | null;
+    throw new Error(data?.error?.message ?? `Request failed (${res.status}).`);
+  }
+  return (await res.json()) as T;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<AuthModalState>(null);
 
-  // Hydrate user from localStorage (client only).
+  // Hydrate session from the server on mount. Treat 401 as "no user"
+  // (not an error) — reading is anonymous and that's the common case.
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("os-user");
-      if (saved) setUser(JSON.parse(saved) as User);
-    } catch {
-      /* ignore */
-    }
+    let cancelled = false;
+    fetch("/api/v1/auth/me", { credentials: "same-origin" })
+      .then(async (res) => {
+        if (cancelled) return;
+        if (res.ok) {
+          const data = (await res.json()) as { user: User };
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  useEffect(() => {
-    if (user) localStorage.setItem("os-user", JSON.stringify(user));
-    else localStorage.removeItem("os-user");
-  }, [user]);
-
-  const signIn = useCallback((email: string) => {
-    const namePart = email.split("@")[0] ?? "user";
-    const name = titleCase(namePart);
-    const u: User = {
+  const signIn = useCallback(async (email: string, password: string) => {
+    const { user } = await postJson<{ user: User }>("/api/v1/auth/signin", {
       email,
-      name,
-      initial: (name[0] ?? "U").toUpperCase(),
-      handle: "@" + namePart.toLowerCase(),
-      joined: new Date().toISOString(),
-    };
-    setUser(u);
-    return u;
+      password,
+    });
+    setUser(user);
+    return user;
   }, []);
 
   const signUp = useCallback(
-    (email: string, _password: string, name?: string) => {
-      const display = name?.trim() || email.split("@")[0] || "Writer";
-      const u: User = {
+    async (email: string, password: string, name: string) => {
+      const { user } = await postJson<{ user: User }>("/api/v1/auth/signup", {
         email,
-        name: display,
-        initial: (display[0] ?? "U").toUpperCase(),
-        handle: "@" + (email.split("@")[0] ?? "writer").toLowerCase(),
-        joined: new Date().toISOString(),
-      };
-      setUser(u);
-      return u;
+        password,
+        name,
+      });
+      setUser(user);
+      return user;
     },
     [],
   );
 
-  const signOut = useCallback(() => setUser(null), []);
+  const signOut = useCallback(async () => {
+    try {
+      await fetch("/api/v1/auth/signout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+    } finally {
+      setUser(null);
+    }
+  }, []);
 
   const requireAuth = useCallback(
     (action: AuthReason = "write") => {
@@ -107,8 +133,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, signIn, signUp, signOut, modal, setModal, requireAuth }),
-    [user, signIn, signUp, signOut, modal, requireAuth],
+    () => ({
+      user,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      modal,
+      setModal,
+      requireAuth,
+    }),
+    [user, loading, signIn, signUp, signOut, modal, requireAuth],
   );
 
   return (
@@ -125,6 +160,7 @@ function AuthModal() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (modal) {
@@ -132,6 +168,7 @@ function AuthModal() {
       setPassword("");
       setName("");
       setError("");
+      setSubmitting(false);
     }
   }, [modal]);
 
@@ -139,16 +176,25 @@ function AuthModal() {
   const mode = typeof modal === "string" ? modal : modal.mode;
   const reason = typeof modal === "object" ? modal.reason ?? null : null;
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     if (!email.includes("@")) return setError("Please enter a valid email.");
     if (password.length < 6)
       return setError("Password must be at least 6 characters.");
     if (mode === "signup" && !name.trim())
       return setError("What should we call you?");
-    if (mode === "signup") signUp(email, password, name);
-    else signIn(email, password);
-    setModal(null);
+    setError("");
+    setSubmitting(true);
+    try {
+      if (mode === "signup") await signUp(email, password, name);
+      else await signIn(email, password);
+      setModal(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const switchMode = (m: AuthMode) =>
@@ -212,6 +258,7 @@ function AuthModal() {
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Mara Solís"
                   autoFocus
+                  disabled={submitting}
                 />
               </label>
             )}
@@ -223,6 +270,7 @@ function AuthModal() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@domain.com"
                 autoFocus={mode === "signin"}
+                disabled={submitting}
               />
             </label>
             <label className="auth-field">
@@ -234,11 +282,22 @@ function AuthModal() {
                 placeholder={
                   mode === "signup" ? "at least 6 characters" : "••••••••"
                 }
+                disabled={submitting}
               />
             </label>
             {error && <div className="auth-error">{error}</div>}
-            <button type="submit" className="btn auth-submit">
-              {mode === "signup" ? "Create account" : "Sign in"}
+            <button
+              type="submit"
+              className="btn auth-submit"
+              disabled={submitting}
+            >
+              {submitting
+                ? mode === "signup"
+                  ? "Creating…"
+                  : "Signing in…"
+                : mode === "signup"
+                  ? "Create account"
+                  : "Sign in"}
               <svg
                 width="14"
                 height="14"
@@ -251,7 +310,7 @@ function AuthModal() {
               </svg>
             </button>
             <div className="auth-oauth">
-              <button type="button" className="oauth-btn">
+              <button type="button" className="oauth-btn" disabled>
                 <svg width="16" height="16" viewBox="0 0 24 24">
                   <path
                     fill="#4285f4"
@@ -272,7 +331,7 @@ function AuthModal() {
                 </svg>
                 Continue with Google
               </button>
-              <button type="button" className="oauth-btn">
+              <button type="button" className="oauth-btn" disabled>
                 <svg
                   width="16"
                   height="16"
@@ -289,14 +348,22 @@ function AuthModal() {
             {mode === "signup" ? (
               <>
                 Already writing with us?{" "}
-                <button type="button" onClick={() => switchMode("signin")}>
+                <button
+                  type="button"
+                  onClick={() => switchMode("signin")}
+                  disabled={submitting}
+                >
                   Sign in
                 </button>
               </>
             ) : (
               <>
                 New here?{" "}
-                <button type="button" onClick={() => switchMode("signup")}>
+                <button
+                  type="button"
+                  onClick={() => switchMode("signup")}
+                  disabled={submitting}
+                >
                   Create an account
                 </button>
               </>
