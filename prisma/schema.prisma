@@ -1,0 +1,157 @@
+// Prisma schema for OurStory — see CLAUDE_CODE_PROMPT.md §4 + memory:
+// project_ourstory_backend_decisions for the load-bearing decisions
+// (image features deferred, body is paragraphs-only, Lucia v3 sessions,
+// argon2id passwords, Neon Postgres + connection pooling).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Connection URLs live in prisma.config.ts in Prisma 7. The provider
+// stays here so the schema engine and code generator know the dialect.
+datasource db {
+  provider = "postgresql"
+}
+
+enum Genre {
+  literary
+  fantasy
+  scifi
+  romance
+  horror
+  mystery
+  memoir
+  poetry
+}
+
+enum StoryLength {
+  flash
+  short
+  novelette
+  novella
+}
+
+enum StoryStatus {
+  draft
+  published
+  unlisted
+  private
+}
+
+enum OAuthProvider {
+  google
+  github
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String?        @map("password_hash")
+  name          String
+  handle        String         @unique
+  initial       String         @db.VarChar(2)
+  bio           String?
+  avatarUrl     String?        @map("avatar_url")
+  oauthProvider OAuthProvider? @map("oauth_provider")
+  oauthId       String?        @map("oauth_id")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  sessions  Session[]
+  stories   Story[]
+  likes     Like[]
+  bookmarks Bookmark[]
+
+  @@unique([oauthProvider, oauthId])
+  @@map("users")
+}
+
+// Lucia v3 session shape: id (string PK), userId, expiresAt.
+model Session {
+  id        String   @id
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Story {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  authorId    String      @map("author_id")
+  title       String
+  synopsis    String
+  // Heterogeneous-by-design but image-block-free in v1: a Json string[].
+  // Kept as Json (not String[]) so a future image-block re-introduction
+  // doesn't require a migration.
+  body        Json
+  genre       Genre
+  length      StoryLength
+  tags        String[]
+  status      StoryStatus @default(draft)
+  featured    Boolean     @default(false)
+  publishedAt DateTime?   @map("published_at")
+  minutes     Int         @default(0)
+  viewCount   Int         @default(0) @map("view_count")
+  likeCount   Int         @default(0) @map("like_count")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes     Like[]
+  bookmarks Bookmark[]
+  views     View[]
+
+  @@index([authorId])
+  @@index([status, publishedAt])
+  @@index([genre])
+  @@index([featured])
+  @@map("stories")
+}
+
+model Like {
+  userId    String   @map("user_id")
+  storyId   String   @map("story_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, storyId])
+  @@index([storyId])
+  @@map("likes")
+}
+
+model Bookmark {
+  userId    String   @map("user_id")
+  storyId   String   @map("story_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, storyId])
+  @@index([storyId])
+  @@map("bookmarks")
+}
+
+// View dedup: sessionHash = hash(ip + ua + day_bucket). The day bucket
+// makes the hash naturally roll over every 24h, so a unique constraint
+// on (storyId, sessionHash) blocks re-counts inside the window without
+// a separate cleanup job.
+model View {
+  id          String   @id @default(cuid())
+  storyId     String   @map("story_id")
+  sessionHash String   @map("session_hash")
+  viewedAt    DateTime @default(now()) @map("viewed_at")
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, sessionHash])
+  @@index([storyId, viewedAt])
+  @@map("views")
+}
