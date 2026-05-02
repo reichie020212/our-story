@@ -1,0 +1,569 @@
+.wrap {
+  position: relative;
+  z-index: 2;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 28px;
+}
+
+.hero {
+  padding: 60px 0 40px;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: dlPulse 2s infinite;
+}
+@keyframes dlPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+.hero h1 {
+  font-family: var(--serif);
+  font-variation-settings: "opsz" 144, "wght" 400;
+  font-size: clamp(48px, 5.5vw, 80px);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  margin: 0 0 20px;
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--accent);
+  font-variation-settings: "opsz" 144, "wght" 300;
+}
+.lede {
+  font-size: 17px;
+  line-height: 1.55;
+  max-width: 480px;
+  color: var(--ink-soft);
+  margin: 0 0 32px;
+}
+
+.stores {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.storeBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 12px;
+  text-decoration: none;
+  transition: transform 0.1s, opacity 0.15s;
+}
+.storeBtn:hover {
+  opacity: 0.92;
+}
+.storeBtn:active {
+  transform: scale(0.97);
+}
+.sm {
+  font-size: 10px;
+  opacity: 0.75;
+  font-family: var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 1px;
+}
+.lg {
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.apkRow {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px;
+  border: 1px dashed var(--rule);
+  border-radius: 12px;
+  background: var(--bg-elev);
+  max-width: 480px;
+}
+.apkIcon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+.apkContent {
+  flex: 1;
+}
+.apkContent h5 {
+  margin: 0 0 3px;
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 500;
+}
+.apkContent p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-mute);
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+}
+.apkBtn {
+  background: var(--ink);
+  color: var(--bg);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.phoneStage {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 620px;
+}
+.phoneFrame {
+  position: relative;
+  width: 280px;
+  height: 580px;
+  background: #1a1814;
+  border-radius: 38px;
+  padding: 8px;
+  box-shadow: 0 40px 80px rgba(31, 26, 20, 0.3),
+    0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+.phoneFrame::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90px;
+  height: 26px;
+  background: #000;
+  border-radius: 20px;
+  z-index: 10;
+}
+.phoneScreen {
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  border-radius: 30px;
+  overflow: hidden;
+  position: relative;
+}
+.phoneContent {
+  padding: 46px 18px 16px;
+}
+.phoneBrand {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-bottom: 18px;
+}
+.phoneBrand .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  align-self: center;
+}
+.phoneFeatured {
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.phoneTag {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.phoneFeatured h3 {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 500;
+  margin: 8px 0 5px;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.phoneSnip {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 10px;
+  color: var(--ink-soft);
+  border-left: 1.5px solid var(--accent);
+  padding-left: 8px;
+  margin: 0;
+  line-height: 1.5;
+}
+.phoneCard {
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.phoneCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--genre);
+}
+.phoneCardMeta {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--genre);
+  margin-bottom: 4px;
+}
+.phoneCard h4 {
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 3px;
+  line-height: 1.2;
+}
+.phoneCard p {
+  font-size: 9px;
+  color: var(--ink-mute);
+  margin: 0;
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+}
+.phoneTabbar {
+  position: absolute;
+  bottom: 12px;
+  left: 8px;
+  right: 8px;
+  height: 42px;
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  border-radius: 20px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+.phoneTab {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg-sunk);
+}
+.phoneTabActive {
+  background: var(--accent);
+}
+
+.phoneBack {
+  position: absolute;
+  right: -40px;
+  top: 20px;
+  transform: rotate(8deg);
+  opacity: 0.85;
+  filter: brightness(0.95);
+}
+.phoneFront {
+  position: relative;
+  z-index: 2;
+  transform: rotate(-3deg);
+}
+.phoneSparkle {
+  position: absolute;
+  font-family: var(--serif);
+  font-size: 36px;
+  color: var(--accent);
+}
+.phoneSparkleS1 {
+  top: 20px;
+  left: -10px;
+  transform: rotate(-15deg);
+}
+.phoneSparkleS2 {
+  bottom: 40px;
+  right: -20px;
+  transform: rotate(20deg);
+}
+
+.qrRow {
+  display: flex;
+  gap: 24px;
+  padding: 32px;
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  margin-bottom: 60px;
+}
+.qrRow h4 {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--ink-mute);
+  text-transform: uppercase;
+  margin: 0 0 10px;
+}
+.qrRow p {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.3;
+  max-width: 420px;
+  letter-spacing: -0.01em;
+}
+.qr {
+  width: 130px;
+  height: 130px;
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 10px;
+  flex-shrink: 0;
+  position: relative;
+}
+.qr svg {
+  width: 100%;
+  height: 100%;
+}
+.qrCaption {
+  position: absolute;
+  bottom: -22px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--ink-mute);
+  text-transform: uppercase;
+}
+
+.features {
+  margin: 80px 0;
+}
+.features h2 {
+  font-family: var(--serif);
+  font-size: 44px;
+  margin: 0 0 12px;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 72, "wght" 400;
+}
+.intro {
+  font-size: 16px;
+  color: var(--ink-soft);
+  max-width: 520px;
+  margin: 0 0 40px;
+}
+.featGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.feat {
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 24px;
+  position: relative;
+}
+.featNum {
+  font-family: var(--serif);
+  font-size: 40px;
+  color: var(--accent);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 72;
+  line-height: 1;
+  margin-bottom: 14px;
+}
+.feat h3 {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+.feat p {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.55;
+}
+
+.compat {
+  margin: 80px 0;
+  padding: 40px;
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  border-radius: 16px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 28px;
+  text-align: center;
+}
+.cell h5 {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--ink-mute);
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+.cell b {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 3px;
+  letter-spacing: -0.01em;
+}
+.cell span {
+  font-size: 11px;
+  color: var(--ink-mute);
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+}
+
+.faq {
+  margin: 60px 0 80px;
+}
+.faq h2 {
+  font-family: var(--serif);
+  font-size: 36px;
+  margin: 0 0 28px;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 72, "wght" 400;
+}
+.faq details {
+  border-top: 1px solid var(--rule);
+  padding: 18px 0;
+}
+.faq details:last-child {
+  border-bottom: 1px solid var(--rule);
+}
+.faq summary {
+  cursor: pointer;
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+.faq summary::after {
+  content: "+";
+  font-family: var(--serif);
+  font-size: 28px;
+  color: var(--ink-mute);
+  font-weight: 300;
+  line-height: 0.7;
+}
+.faq details[open] summary::after {
+  content: "−";
+}
+.faq details p {
+  margin: 14px 0 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  max-width: 680px;
+}
+
+.adSlot {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--bg-sunk) 0 10px,
+    color-mix(in srgb, var(--bg-sunk) 70%, transparent) 10px 20px
+  );
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  position: relative;
+  height: 90px;
+  margin: 24px 0;
+}
+.adSlot::before {
+  content: "Ad";
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-size: 9px;
+  opacity: 0.7;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .phoneStage {
+    height: 500px;
+  }
+  .featGrid {
+    grid-template-columns: 1fr;
+  }
+  .compat {
+    grid-template-columns: 1fr 1fr;
+  }
+  .qrRow {
+    flex-direction: column;
+  }
+}

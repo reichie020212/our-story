@@ -1,0 +1,232 @@
+export type Genre = {
+  id: string;
+  label: string;
+  color: string;
+};
+
+export type Length = {
+  id: string;
+  label: string;
+  sub: string;
+};
+
+export type Story = {
+  id: string;
+  featured?: boolean;
+  title: string;
+  synopsis: string;
+  author: string;
+  authorInitial: string;
+  genre: string;
+  length: string;
+  tags: string[];
+  published: string;
+  views: number;
+  likes: number;
+  minutes: number;
+  body?: string[];
+};
+
+export const GENRES: Genre[] = [
+  { id: "literary", label: "Literary", color: "oklch(52% 0.14 35)" },
+  { id: "fantasy", label: "Fantasy", color: "oklch(52% 0.14 280)" },
+  { id: "scifi", label: "Sci-Fi", color: "oklch(52% 0.14 200)" },
+  { id: "romance", label: "Romance", color: "oklch(60% 0.14 10)" },
+  { id: "horror", label: "Horror", color: "oklch(42% 0.10 20)" },
+  { id: "mystery", label: "Mystery", color: "oklch(45% 0.08 250)" },
+  { id: "memoir", label: "Memoir", color: "oklch(55% 0.10 65)" },
+  { id: "poetry", label: "Poetry", color: "oklch(55% 0.12 140)" },
+];
+
+export const LENGTHS: Length[] = [
+  { id: "flash", label: "Flash", sub: "under 1k words" },
+  { id: "short", label: "Short", sub: "1k – 7.5k" },
+  { id: "novelette", label: "Novelette", sub: "7.5k – 17k" },
+  { id: "novella", label: "Novella", sub: "17k – 40k" },
+];
+
+const FEATURED_BODY: string[] = [
+  "Duh dum duh dum.",
+  "One ordinary day, I was playing with my friends when a blinding light came out of nowhere and consumed me.",
+  "Duh dum… duh dum…",
+  "I woke up, and it was so dark I felt scared — but there was a sound, so loud and steady, that I kept hearing it. Somehow, it gave me comfort.",
+  "Duh dum… duh dum…",
+  "I could hear muffled voices that seemed like they were talking to me. Sometimes, I also heard a melody: a woman's voice singing, and a man talking. I liked my new place. It was warm, and it moved when she moved. I think I liked her.",
+  "I was always full and satisfied. I got whatever flavour she ate, and it was always sweet — oh, I liked sweets! But my place was always shaking, up and down, side to side. I shook too when it did.",
+  "As days went by, I could feel this place becoming tighter. I guess I was getting bigger. Whenever I stretched my arms and feet I could feel that I was hitting something. But I couldn't help it — I liked to stretch.",
+  "Then came the day I could no longer move because I'd gotten so big. I wanted a new place already. The water around me was suddenly decreasing, and I could feel a tension. A new place was calling out to me.",
+  "I needed to get out. I squeezed through a hole as something strong pushed me forward. It was tight. It was bright. It was scary.",
+  "When I finally got out, cold air hit me. I heard a lot of voices.",
+  "“Congratulations, baby boy.”",
+  "And I suddenly got an urge to cry. I cried out loud. Then I heard a familiar voice, and I stopped crying, because I knew her. And that's the first time I saw the face behind the voice I had loved all along — my mom.",
+  "She held me to her chest.",
+  "Duh dum… duh dum…",
+  "And I was home again.",
+];
+
+export const STORIES: Story[] = [
+  {
+    id: "my-first-home",
+    featured: true,
+    title: "My First Home",
+    synopsis:
+      "A heartbeat, a warm place, a voice singing lullabies — and the first morning of a life.",
+    author: "Mara Solís",
+    authorInitial: "M",
+    genre: "literary",
+    length: "flash",
+    tags: ["birth", "family", "memory", "first-person"],
+    published: "2026-04-12",
+    views: 12847,
+    likes: 1243,
+    minutes: 4,
+    body: FEATURED_BODY,
+  },
+  {
+    id: "the-cartographer",
+    title: "The Cartographer of Forgotten Rooms",
+    synopsis:
+      "Ines draws maps of places that don't exist anymore. One evening, a stranger asks her to find a room she has never seen.",
+    author: "Elena Voss",
+    authorInitial: "E",
+    genre: "literary",
+    length: "short",
+    tags: ["melancholy", "memory", "strangers"],
+    published: "2026-04-02",
+    views: 8421,
+    likes: 743,
+    minutes: 12,
+  },
+  {
+    id: "lantern-in-fog",
+    title: "A Lantern in the Fog",
+    synopsis:
+      "In the marsh towns, they say if your light goes out, you're already gone. Tonight, mine flickered.",
+    author: "Rowan Park",
+    authorInitial: "R",
+    genre: "horror",
+    length: "short",
+    tags: ["folklore", "rural-horror", "candlelight"],
+    published: "2026-03-28",
+    views: 6214,
+    likes: 511,
+    minutes: 9,
+  },
+  {
+    id: "signal-from-io",
+    title: "Signal From Io",
+    synopsis:
+      "The station hadn't transmitted in eleven years. Then, at 03:14 UTC, it said my name.",
+    author: "Dara Chen",
+    authorInitial: "D",
+    genre: "scifi",
+    length: "novelette",
+    tags: ["deep-space", "isolation", "first-contact"],
+    published: "2026-03-21",
+    views: 15203,
+    likes: 1802,
+    minutes: 38,
+  },
+  {
+    id: "bookbinder",
+    title: "The Bookbinder’s Apprentice",
+    synopsis:
+      "Every book the old man mends grows a new page. Mira wasn't supposed to read them.",
+    author: "Hana Okafor",
+    authorInitial: "H",
+    genre: "fantasy",
+    length: "short",
+    tags: ["magic-realism", "books", "apprentice"],
+    published: "2026-03-15",
+    views: 9874,
+    likes: 1129,
+    minutes: 14,
+  },
+  {
+    id: "letters-never-mailed",
+    title: "Letters I Never Mailed",
+    synopsis:
+      "A bundle of handwritten apologies, addressed to people who may or may not still be listening.",
+    author: "Jun Park",
+    authorInitial: "J",
+    genre: "memoir",
+    length: "flash",
+    tags: ["confession", "epistolary", "grief"],
+    published: "2026-03-10",
+    views: 4210,
+    likes: 402,
+    minutes: 6,
+  },
+  {
+    id: "case-of-the-blue-umbrella",
+    title: "The Case of the Blue Umbrella",
+    synopsis:
+      "Detective Oryo is retired. The umbrella is not evidence. Neither of these things will stay true for long.",
+    author: "Omar Aziz",
+    authorInitial: "O",
+    genre: "mystery",
+    length: "novelette",
+    tags: ["noir", "rainy-city", "retirement"],
+    published: "2026-03-03",
+    views: 7402,
+    likes: 654,
+    minutes: 28,
+  },
+  {
+    id: "two-trains",
+    title: "Two Trains, One Platform",
+    synopsis:
+      "She was going north. He was going south. The announcement said both trains were delayed by exactly seventeen minutes.",
+    author: "Priya Shah",
+    authorInitial: "P",
+    genre: "romance",
+    length: "flash",
+    tags: ["meet-cute", "trains", "almost"],
+    published: "2026-02-24",
+    views: 18420,
+    likes: 2103,
+    minutes: 5,
+  },
+  {
+    id: "hymn-for-static",
+    title: "Hymn for Static",
+    synopsis: "Three poems for the radios we left on, hoping someone would answer.",
+    author: "Theo Blake",
+    authorInitial: "T",
+    genre: "poetry",
+    length: "flash",
+    tags: ["poetry", "radio", "longing"],
+    published: "2026-02-18",
+    views: 3109,
+    likes: 412,
+    minutes: 3,
+  },
+  {
+    id: "the-quiet-empire",
+    title: "The Quiet Empire",
+    synopsis:
+      "Nine cities surrender without a shot. The tenth sends back a single sealed envelope.",
+    author: "Kai Winter",
+    authorInitial: "K",
+    genre: "fantasy",
+    length: "novella",
+    tags: ["politics", "war", "slow-burn"],
+    published: "2026-02-11",
+    views: 11020,
+    likes: 1341,
+    minutes: 62,
+  },
+];
+
+export const TRENDING_TAGS = [
+  "memory",
+  "first-contact",
+  "folklore",
+  "apprentice",
+  "grief",
+  "noir",
+  "meet-cute",
+  "magic-realism",
+  "poetry",
+  "slow-burn",
+];
