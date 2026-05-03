@@ -3,10 +3,13 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { error, json, zodError } from "@/lib/api";
 import { handleError, requireUser } from "@/lib/auth-guard";
+import { enforce, getLimiter } from "@/lib/ratelimit";
 import { uniqueStorySlug } from "@/lib/slug";
 import { minutesFromBody, serializeStory } from "@/lib/story";
 
 export const runtime = "nodejs";
+
+const writeLimiter = () => getLimiter("write", 10, "1 m");
 
 const GENRES = [
   "literary",
@@ -110,6 +113,8 @@ const CreateBody = z.object({
 export async function POST(req: Request) {
   try {
     const user = await requireUser();
+    const blocked = await enforce(writeLimiter(), `u:${user.id}`);
+    if (blocked) return blocked;
     let raw: unknown;
     try {
       raw = await req.json();

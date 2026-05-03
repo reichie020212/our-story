@@ -6,9 +6,12 @@ import {
   handleError,
   requireUser,
 } from "@/lib/auth-guard";
+import { enforce, getLimiter } from "@/lib/ratelimit";
 import { paragraphsFromBody, serializeStory } from "@/lib/story";
 
 export const runtime = "nodejs";
+
+const writeLimiter = () => getLimiter("write", 10, "1 m");
 
 export async function POST(
   _req: Request,
@@ -16,6 +19,8 @@ export async function POST(
 ) {
   try {
     const user = await requireUser();
+    const blocked = await enforce(writeLimiter(), `u:${user.id}`);
+    if (blocked) return blocked;
     const { id } = await params;
 
     const story = await db.story.findFirst({

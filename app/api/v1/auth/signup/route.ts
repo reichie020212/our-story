@@ -6,9 +6,13 @@ import {
   uniqueHandle,
 } from "@/lib/auth";
 import { error, json, zodError } from "@/lib/api";
+import { enforce, getLimiter } from "@/lib/ratelimit";
+import { clientIp } from "@/lib/request";
 import { startSession } from "@/lib/session";
 
 export const runtime = "nodejs";
+
+const limiter = () => getLimiter("auth", 5, "1 m");
 
 const Body = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
@@ -17,6 +21,9 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  const blocked = await enforce(limiter(), `ip:${await clientIp()}`);
+  if (blocked) return blocked;
+
   let raw: unknown;
   try {
     raw = await req.json();
