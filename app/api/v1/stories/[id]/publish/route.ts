@@ -18,8 +18,8 @@ export async function POST(
     const user = await requireUser();
     const { id } = await params;
 
-    const story = await db.story.findUnique({
-      where: { id },
+    const story = await db.story.findFirst({
+      where: { OR: [{ id }, { slug: id }] },
       include: { author: true },
     });
     if (!story || story.deletedAt) throw new NotFoundError("Story not found.");

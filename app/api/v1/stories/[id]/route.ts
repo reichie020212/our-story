@@ -7,9 +7,43 @@ import {
   handleError,
   requireUser,
 } from "@/lib/auth-guard";
+import { getCurrentSession } from "@/lib/session";
 import { minutesFromBody, serializeStory } from "@/lib/story";
 
 export const runtime = "nodejs";
+
+/** Look up by slug OR id so /api/v1/stories/my-first-home and the
+ *  /api/v1/stories/<cuid> form both work. Drafts are visible only to
+ *  the owner. */
+async function loadStoryReadable(idOrSlug: string, userId: string | null) {
+  const story = await db.story.findFirst({
+    where: {
+      OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      deletedAt: null,
+    },
+    include: { author: true },
+  });
+  if (!story) return null;
+  const isOwner = userId === story.authorId;
+  if (story.status !== "published" && !isOwner) return null;
+  return story;
+}
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+    const { user } = await getCurrentSession();
+    const story = await loadStoryReadable(id, user?.id ?? null);
+    if (!story) throw new NotFoundError("Story not found.");
+    // View dedup + rate limit lands in commit 8 (Engagement).
+    return json({ story: serializeStory(story, story.author) });
+  } catch (err) {
+    return handleError(err);
+  }
+}
 
 const GENRES = [
   "literary",
@@ -34,9 +68,9 @@ const PatchBody = z
   })
   .strict();
 
-async function loadOwnedStory(id: string, userId: string) {
-  const story = await db.story.findUnique({
-    where: { id },
+async function loadOwnedStory(idOrSlug: string, userId: string) {
+  const story = await db.story.findFirst({
+    where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
     include: { author: true },
   });
   if (!story || story.deletedAt) throw new NotFoundError("Story not found.");
