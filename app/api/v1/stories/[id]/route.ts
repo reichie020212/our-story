@@ -4,6 +4,7 @@ import { error, json, zodError } from "@/lib/api";
 import {
   ForbiddenError,
   NotFoundError,
+  getAuthenticatedUser,
   handleError,
   requireUser,
 } from "@/lib/auth-guard";
@@ -14,7 +15,6 @@ import {
   userAgent,
   viewDedupHash,
 } from "@/lib/request";
-import { getCurrentSession } from "@/lib/session";
 import { minutesFromBody, serializeStory } from "@/lib/story";
 
 export const runtime = "nodejs";
@@ -76,7 +76,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { user } = await getCurrentSession();
+    const user = await getAuthenticatedUser();
     const story = await loadStoryReadable(id, user?.id ?? null);
     if (!story) throw new NotFoundError("Story not found.");
 

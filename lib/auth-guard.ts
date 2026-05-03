@@ -1,7 +1,9 @@
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { error } from "./api";
+import { findPublicUser, type PublicUser } from "./auth";
+import { verifyAccessToken } from "./jwt";
 import { getCurrentSession } from "./session";
-import type { PublicUser } from "./auth";
 
 export class HttpError extends Error {
   status: number;
@@ -31,9 +33,26 @@ export class NotFoundError extends HttpError {
   }
 }
 
-/** Resolve the current session, or throw UnauthorizedError. */
-export async function requireUser(): Promise<PublicUser> {
+/** Resolve the caller from either the web cookie session or a mobile
+ *  RS256 access token. Returns null if neither is present or valid. */
+export async function getAuthenticatedUser(): Promise<PublicUser | null> {
   const { user } = await getCurrentSession();
+  if (user) return user;
+
+  const authz = (await headers()).get("authorization");
+  const match = authz?.match(/^Bearer\s+(\S+)$/i);
+  if (!match) return null;
+  try {
+    const { userId } = await verifyAccessToken(match[1]);
+    return await findPublicUser(userId);
+  } catch {
+    return null;
+  }
+}
+
+/** Resolve the current user, or throw UnauthorizedError. */
+export async function requireUser(): Promise<PublicUser> {
+  const user = await getAuthenticatedUser();
   if (!user) throw new UnauthorizedError();
   return user;
 }

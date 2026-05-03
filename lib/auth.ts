@@ -117,6 +117,13 @@ export async function invalidateSession(sessionId: string): Promise<void> {
   await db.session.delete({ where: { id: sessionId } }).catch(() => {});
 }
 
+export async function findPublicUser(
+  userId: string,
+): Promise<PublicUser | null> {
+  const row = await db.user.findUnique({ where: { id: userId } });
+  return row ? publicUser(row) : null;
+}
+
 export async function invalidateUserSessions(userId: string): Promise<void> {
   await db.session.deleteMany({ where: { userId } });
 }
