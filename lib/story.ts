@@ -42,6 +42,11 @@ export type StoryWire = {
     handle: string;
     initial: string;
   };
+  // Per-viewer state. Populated only on GET single story when a session
+  // is present; absent (undefined) for the list endpoint and anonymous
+  // callers, so the UI can still render fine without them.
+  liked?: boolean;
+  bookmarked?: boolean;
 };
 
 /** Shape a Story row + author for the JSON wire. Internal-only fields
@@ -49,6 +54,7 @@ export type StoryWire = {
 export function serializeStory(
   story: Story,
   author: StoryAuthorSlice,
+  viewerState?: { liked?: boolean; bookmarked?: boolean },
 ): StoryWire {
   return {
     id: story.id,
@@ -73,5 +79,9 @@ export function serializeStory(
       handle: author.handle,
       initial: author.initial,
     },
+    ...(viewerState?.liked !== undefined ? { liked: viewerState.liked } : {}),
+    ...(viewerState?.bookmarked !== undefined
+      ? { bookmarked: viewerState.bookmarked }
+      : {}),
   };
 }

@@ -1,37 +1,115 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { GENRES, LENGTHS } from "@/data/stories";
 import { useAuth } from "./AuthProvider";
+import { apiSend, ApiCallError } from "@/lib/client/api";
+import type { StoryWire } from "@/lib/story";
 
-type Status = "draft" | "saving" | "saved" | "published";
+type Status = "draft" | "saving" | "saved" | "publishing" | "published";
 type Format = { bold: boolean; italic: boolean; underline: boolean };
 
 export function Composer() {
+  const router = useRouter();
   const { user } = useAuth();
+  const [storyId, setStoryId] = useState<string | null>(null);
+  const [storySlug, setStorySlug] = useState<string | null>(null);
+
   const [title, setTitle] = useState("");
   const [synopsis, setSynopsis] = useState("");
   const [body, setBody] = useState("");
   const [genre, setGenre] = useState("literary");
   const [length, setLength] = useState("flash");
-  const [tags, setTags] = useState<string[]>(["memory", "first-person"]);
+  const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [status, setStatus] = useState<Status>("draft");
+  const [error, setError] = useState("");
   const [activeFormat, setActiveFormat] = useState<Format>({
     bold: false,
     italic: false,
     underline: false,
   });
 
-  const saveDraft = () => {
-    if (!title && !body) return;
-    setStatus("saving");
-    // Backend wiring (commit 9) will call PATCH /api/v1/stories/:id here.
-    setTimeout(() => setStatus("saved"), 600);
-  };
-
   const wordCount = body.trim().split(/\s+/).filter(Boolean).length;
   const readTime = Math.max(1, Math.round(wordCount / 220));
+
+  const bodyParagraphs = () =>
+    body
+      .split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+  const buildPayload = () => ({
+    title: title.trim(),
+    synopsis: synopsis.trim(),
+    body: bodyParagraphs(),
+    genre,
+    length,
+    tags,
+  });
+
+  const saveDraft = async () => {
+    if (!title.trim() && !body.trim()) return;
+    setStatus("saving");
+    setError("");
+    try {
+      if (storyId) {
+        const data = await apiSend<{ story: StoryWire }>(
+          `/api/v1/stories/${storyId}`,
+          "PATCH",
+          buildPayload(),
+        );
+        setStorySlug(data.story.slug);
+      } else {
+        const data = await apiSend<{ story: StoryWire }>(
+          "/api/v1/stories",
+          "POST",
+          buildPayload(),
+        );
+        setStoryId(data.story.id);
+        setStorySlug(data.story.slug);
+      }
+      setStatus("saved");
+    } catch (err) {
+      setStatus("draft");
+      setError(
+        err instanceof ApiCallError
+          ? err.message
+          : "Couldn't save. Please try again.",
+      );
+    }
+  };
+
+  const publish = async () => {
+    setError("");
+    // Make sure the latest body is on the server before flipping to published.
+    if (
+      !storyId ||
+      status === "saving" ||
+      status === "draft" ||
+      status === "published"
+    ) {
+      await saveDraft();
+    }
+    if (!storyId) return; // saveDraft would have set an error
+    setStatus("publishing");
+    try {
+      const data = await apiSend<{ story: StoryWire }>(
+        `/api/v1/stories/${storyId}/publish`,
+        "POST",
+      );
+      setStatus("published");
+      router.push(`/s/${data.story.slug}`);
+    } catch (err) {
+      setStatus("saved");
+      setError(
+        err instanceof ApiCallError
+          ? err.message
+          : "Couldn't publish. Please try again.",
+      );
+    }
+  };
 
   const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && tagInput.trim()) {
@@ -90,25 +168,49 @@ export function Composer() {
             </span>
           )}
           <span
-            className={`status-pill ${status === "saved" ? "saved" : ""}`}
+            className={`status-pill ${status === "saved" || status === "published" ? "saved" : ""}`}
           >
             {status === "saving"
               ? "Saving…"
               : status === "saved"
                 ? "✓ Saved"
-                : status === "published"
-                  ? "Published ✓"
-                  : "Draft"}
+                : status === "publishing"
+                  ? "Publishing…"
+                  : status === "published"
+                    ? "Published ✓"
+                    : "Draft"}
           </span>
-          <button className="btn-ghost btn" onClick={saveDraft}>
+          <button
+            className="btn-ghost btn"
+            onClick={saveDraft}
+            disabled={status === "saving" || status === "publishing"}
+          >
             Save draft
           </button>
-          <button className="btn-ghost btn">Preview</button>
-          <button className="btn" onClick={() => setStatus("published")}>
+          <button
+            className="btn-ghost btn"
+            onClick={() => storySlug && router.push(`/s/${storySlug}`)}
+            disabled={!storySlug}
+          >
+            Preview
+          </button>
+          <button
+            className="btn"
+            onClick={publish}
+            disabled={status === "saving" || status === "publishing"}
+          >
             {status === "published" ? "Published ✓" : "Publish"}
           </button>
         </div>
       </div>
+      {error && (
+        <div
+          className="auth-error"
+          style={{ marginBottom: 16, maxWidth: 720 }}
+        >
+          {error}
+        </div>
+      )}
       <div className="composer-grid">
         <div className="editor">
           <div className="toolbar">
@@ -238,24 +340,6 @@ export function Composer() {
                 <input type="radio" name="vis" /> Private — only you
               </label>
             </div>
-          </div>
-          <div
-            className="side-panel"
-            style={{
-              background: "var(--bg-sunk)",
-              borderStyle: "dashed",
-            }}
-          >
-            <h4 style={{ marginBottom: 8 }}>Danger Zone</h4>
-            <button
-              style={{
-                fontSize: 12,
-                color: "var(--ink-mute)",
-                textDecoration: "underline",
-              }}
-            >
-              Delete draft
-            </button>
           </div>
         </aside>
       </div>

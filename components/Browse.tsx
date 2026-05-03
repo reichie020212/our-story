@@ -2,12 +2,52 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
-import { GENRES, LENGTHS, STORIES, TRENDING_TAGS, type Story } from "@/data/stories";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GENRES, LENGTHS } from "@/data/stories";
+import { apiGet } from "@/lib/client/api";
+import type { StoryWire } from "@/lib/story";
 
-function Hero() {
-  const featured = STORIES.find((s) => s.featured) ?? STORIES[0];
-  const genre = GENRES.find((g) => g.id === featured.genre) ?? GENRES[0];
+type Sort = "recent" | "popular" | "loved" | "shortest";
+
+type StoriesResponse = {
+  stories: StoryWire[];
+  nextCursor: string | null;
+};
+type FeaturedResponse = { story: StoryWire };
+type TrendingResponse = { stories: StoryWire[] };
+type TrendingTagsResponse = { tags: { tag: string; count: number }[] };
+
+function HeroSkeleton() {
+  return (
+    <section className="hero" data-screen-label="01 Hero">
+      <div>
+        <div className="eyebrow">
+          <span className="pulse"></span>
+          Editor&apos;s Pick · This Week
+        </div>
+        <h1>
+          A home for <em>original</em>
+          <br />
+          stories, carefully kept.
+        </h1>
+        <p className="lede">
+          OurStory is a quiet library for writers who&apos;d rather be read than
+          reposted. Save your drafts, share what&apos;s ready, and let readers
+          find their next favorite.
+        </p>
+      </div>
+      <article
+        className="featured-card"
+        style={{ minHeight: 220, opacity: 0.55 }}
+      >
+        <span className="tag">Loading…</span>
+      </article>
+    </section>
+  );
+}
+
+function Hero({ story }: { story: StoryWire }) {
+  const genre = GENRES.find((g) => g.id === story.genre) ?? GENRES[0];
   return (
     <section className="hero" data-screen-label="01 Hero">
       <div>
@@ -54,18 +94,17 @@ function Hero() {
         >
           {genre.label} · Flash Fiction
         </span>
-        <h3>{featured.title}</h3>
-        <p className="snippet">“{featured.synopsis}”</p>
+        <h3>{story.title}</h3>
+        <p className="snippet">“{story.synopsis}”</p>
         <div className="byline">
           <span>
-            By <b>{featured.author}</b>
+            By <b>{story.author.name}</b>
           </span>
           <span>
-            {featured.minutes} min read · {featured.views.toLocaleString()}{" "}
-            reads
+            {story.minutes} min read · {story.views.toLocaleString()} reads
           </span>
         </div>
-        <Link href={`/s/${featured.id}`} className="btn read-btn">
+        <Link href={`/s/${story.slug}`} className="btn read-btn">
           Read the story
           <svg
             width="14"
@@ -88,11 +127,12 @@ type FiltersProps = {
   setGenre: (id: string) => void;
   length: string;
   setLength: (id: string) => void;
-  sort: string;
-  setSort: (id: string) => void;
+  sort: Sort;
+  setSort: (id: Sort) => void;
   activeTag: string | null;
   setActiveTag: (tag: string | null) => void;
-  count: number;
+  count: number | null;
+  loading: boolean;
 };
 
 function Filters({
@@ -105,12 +145,17 @@ function Filters({
   activeTag,
   setActiveTag,
   count,
+  loading,
 }: FiltersProps) {
   return (
     <div className="filter-bar">
       <div className="filter-title">
         <h2>Browse the library</h2>
-        <span className="count">{count} stories · updated today</span>
+        <span className="count">
+          {loading
+            ? "loading…"
+            : `${count ?? 0} stories · updated today`}
+        </span>
       </div>
       <div className="filters">
         <div className="filter-group">
@@ -163,7 +208,7 @@ function Filters({
           <select
             className="sort-select"
             value={sort}
-            onChange={(e) => setSort(e.target.value)}
+            onChange={(e) => setSort(e.target.value as Sort)}
           >
             <option value="recent">Most recent</option>
             <option value="popular">Most read</option>
@@ -199,24 +244,27 @@ function Filters({
   );
 }
 
-type StoryCardProps = {
-  story: Story;
+function StoryCard({
+  story,
+  onTag,
+}: {
+  story: StoryWire;
   onTag: (tag: string) => void;
-};
-
-function StoryCard({ story, onTag }: StoryCardProps) {
+}) {
   const router = useRouter();
   const genre = GENRES.find((g) => g.id === story.genre) ?? GENRES[0];
   const length = LENGTHS.find((l) => l.id === story.length) ?? LENGTHS[0];
-  const date = new Date(story.published).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
+  const date = story.publishedAt
+    ? new Date(story.publishedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    : "—";
   return (
     <article
       className="story-card"
       style={{ ["--genre-color" as string]: genre.color } as React.CSSProperties}
-      onClick={() => router.push(`/s/${story.id}`)}
+      onClick={() => router.push(`/s/${story.slug}`)}
     >
       <div className="meta-row">
         <span className="genre">
@@ -246,7 +294,9 @@ function StoryCard({ story, onTag }: StoryCardProps) {
       <div className="footer">
         <span>
           By{" "}
-          <b style={{ color: "var(--ink)", fontWeight: 500 }}>{story.author}</b>{" "}
+          <b style={{ color: "var(--ink)", fontWeight: 500 }}>
+            {story.author.name}
+          </b>{" "}
           · {date}
         </span>
         <div className="stats">
@@ -285,21 +335,39 @@ function StoryCard({ story, onTag }: StoryCardProps) {
   );
 }
 
-type SidebarProps = {
-  onTag: (tag: string) => void;
-};
+function Sidebar({ onTag }: { onTag: (tag: string) => void }) {
+  const [trending, setTrending] = useState<StoryWire[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
 
-function Sidebar({ onTag }: SidebarProps) {
-  const trending = [...STORIES].sort((a, b) => b.views - a.views).slice(0, 5);
+  useEffect(() => {
+    apiGet<TrendingResponse>("/api/v1/stories/trending?limit=5")
+      .then((data) => setTrending(data.stories))
+      .catch(() => setTrending([]));
+    apiGet<TrendingTagsResponse>("/api/v1/tags/trending?limit=10")
+      .then((data) => setTags(data.tags.map((t) => t.tag)))
+      .catch(() => setTags([]));
+  }, []);
+
   return (
     <aside className="sidebar">
       <div className="ad ad-sidebar">300 × 600 · Medium Rectangle</div>
       <div className="panel">
         <h4>Trending this week</h4>
         <div className="trending">
+          {trending.length === 0 && (
+            <div
+              style={{
+                fontSize: 12,
+                color: "var(--ink-mute)",
+                fontFamily: "var(--mono)",
+              }}
+            >
+              loading…
+            </div>
+          )}
           {trending.map((s, i) => (
             <Link
-              href={`/s/${s.id}`}
+              href={`/s/${s.slug}`}
               className="item"
               key={s.id}
               style={{ textDecoration: "none", color: "inherit" }}
@@ -308,7 +376,7 @@ function Sidebar({ onTag }: SidebarProps) {
               <div>
                 <h5>{s.title}</h5>
                 <span className="by">
-                  {s.author} ·{" "}
+                  {s.author.name} ·{" "}
                   {s.views > 999 ? (s.views / 1000).toFixed(1) + "k" : s.views}{" "}
                   reads
                 </span>
@@ -320,7 +388,18 @@ function Sidebar({ onTag }: SidebarProps) {
       <div className="panel">
         <h4>Popular tags</h4>
         <div className="tag-cloud">
-          {TRENDING_TAGS.map((t) => (
+          {tags.length === 0 && (
+            <span
+              style={{
+                fontSize: 12,
+                color: "var(--ink-mute)",
+                fontFamily: "var(--mono)",
+              }}
+            >
+              loading…
+            </span>
+          )}
+          {tags.map((t) => (
             <button key={t} onClick={() => onTag(t)}>
               #{t}
             </button>
@@ -346,7 +425,8 @@ function Sidebar({ onTag }: SidebarProps) {
           Every Sunday we publish a reader-voted short from the library. Submit
           your draft by Friday.
         </p>
-        <button
+        <Link
+          href="/compose"
           className="btn"
           style={{
             background: "var(--accent)",
@@ -354,59 +434,90 @@ function Sidebar({ onTag }: SidebarProps) {
           }}
         >
           Submit a story
-        </button>
+        </Link>
       </div>
     </aside>
   );
 }
 
-const SORTERS: Record<string, (a: Story, b: Story) => number> = {
-  recent: (a, b) =>
-    new Date(b.published).getTime() - new Date(a.published).getTime(),
-  popular: (a, b) => b.views - a.views,
-  loved: (a, b) => b.likes - a.likes,
-  shortest: (a, b) => a.minutes - b.minutes,
-};
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
 
 export function Browse() {
   const searchParams = useSearchParams();
-  const search = searchParams.get("q") ?? "";
+  const search = useDebouncedValue(searchParams.get("q") ?? "", 250);
 
   const [genre, setGenre] = useState("all");
   const [length, setLength] = useState("all");
-  const [sort, setSort] = useState("recent");
+  const [sort, setSort] = useState<Sort>("recent");
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
-  const filtered = useMemo(() => {
-    let list = [...STORIES];
-    if (genre !== "all") list = list.filter((s) => s.genre === genre);
-    if (length !== "all") list = list.filter((s) => s.length === length);
-    if (activeTag) list = list.filter((s) => s.tags.includes(activeTag));
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (s) =>
-          s.title.toLowerCase().includes(q) ||
-          s.author.toLowerCase().includes(q) ||
-          s.synopsis.toLowerCase().includes(q) ||
-          s.tags.some((t) => t.includes(q)),
-      );
-    }
-    return list.sort(SORTERS[sort] ?? SORTERS.recent);
+  const [stories, setStories] = useState<StoryWire[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [featured, setFeatured] = useState<StoryWire | null>(null);
+  const requestId = useRef(0);
+
+  // Featured runs once on mount.
+  useEffect(() => {
+    apiGet<FeaturedResponse>("/api/v1/stories/featured")
+      .then((data) => setFeatured(data.story))
+      .catch(() => setFeatured(null));
+  }, []);
+
+  const fetchUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    if (genre !== "all") params.set("genre", genre);
+    if (length !== "all") params.set("length", length);
+    if (sort !== "recent") params.set("sort", sort);
+    if (activeTag) params.set("tag", activeTag);
+    if (search) params.set("q", search);
+    params.set("limit", "30");
+    const qs = params.toString();
+    return `/api/v1/stories${qs ? `?${qs}` : ""}`;
   }, [genre, length, sort, activeTag, search]);
 
-  type Item = { kind: "card"; data: Story } | { kind: "ad"; id: string };
-  const withAds: Item[] = [];
-  filtered.forEach((s, i) => {
-    withAds.push({ kind: "card", data: s });
-    if ((i + 1) % 4 === 0 && i < filtered.length - 1) {
-      withAds.push({ kind: "ad", id: "inline-" + i });
-    }
-  });
+  // List refetches whenever the URL changes; out-of-order responses are
+  // discarded via the requestId ref so a fast typer never sees an old
+  // result paint over the new one.
+  useEffect(() => {
+    const my = ++requestId.current;
+    setLoading(true);
+    apiGet<StoriesResponse>(fetchUrl)
+      .then((data) => {
+        if (my === requestId.current) setStories(data.stories);
+      })
+      .catch(() => {
+        if (my === requestId.current) setStories([]);
+      })
+      .finally(() => {
+        if (my === requestId.current) setLoading(false);
+      });
+  }, [fetchUrl]);
+
+  const onTag = useCallback((tag: string) => setActiveTag(tag), []);
+
+  type Item = { kind: "card"; data: StoryWire } | { kind: "ad"; id: string };
+  const withAds = useMemo<Item[]>(() => {
+    if (!stories) return [];
+    const items: Item[] = [];
+    stories.forEach((s, i) => {
+      items.push({ kind: "card", data: s });
+      if ((i + 1) % 4 === 0 && i < stories.length - 1) {
+        items.push({ kind: "ad", id: "inline-" + i });
+      }
+    });
+    return items;
+  }, [stories]);
 
   return (
     <>
-      <Hero />
+      {featured ? <Hero story={featured} /> : <HeroSkeleton />}
       <div className="ad ad-leaderboard">728 × 90 · Leaderboard</div>
       <Filters
         genre={genre}
@@ -417,16 +528,32 @@ export function Browse() {
         setSort={setSort}
         activeTag={activeTag}
         setActiveTag={setActiveTag}
-        count={filtered.length}
+        count={stories?.length ?? null}
+        loading={loading}
       />
       <div className="grid-wrap" data-screen-label="02 Library">
         <div className="story-grid">
+          {stories === null && (
+            <div
+              style={{
+                gridColumn: "1/-1",
+                padding: "60px 20px",
+                textAlign: "center",
+                color: "var(--ink-mute)",
+                fontFamily: "var(--mono)",
+                fontSize: 12,
+                letterSpacing: "0.1em",
+              }}
+            >
+              loading library…
+            </div>
+          )}
           {withAds.map((item) =>
             item.kind === "card" ? (
               <StoryCard
                 key={item.data.id}
                 story={item.data}
-                onTag={setActiveTag}
+                onTag={onTag}
               />
             ) : (
               <div
@@ -438,7 +565,7 @@ export function Browse() {
               </div>
             ),
           )}
-          {filtered.length === 0 && (
+          {stories !== null && stories.length === 0 && (
             <div
               style={{
                 gridColumn: "1/-1",
@@ -454,7 +581,7 @@ export function Browse() {
             </div>
           )}
         </div>
-        <Sidebar onTag={setActiveTag} />
+        <Sidebar onTag={onTag} />
       </div>
     </>
   );

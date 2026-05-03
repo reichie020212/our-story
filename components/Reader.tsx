@@ -2,28 +2,46 @@
 
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
-import { GENRES, STORIES, type Story } from "@/data/stories";
+import { GENRES } from "@/data/stories";
+import { useAuth } from "@/components/AuthProvider";
+import { apiSend } from "@/lib/client/api";
+import type { StoryWire } from "@/lib/story";
 
-const FALLBACK_BODY = (story: Story) => [
+const FALLBACK_BODY = (story: StoryWire) => [
   `(Preview) ${story.synopsis}`,
-  "This story's full text hasn't been written yet in the demo — but its shape is here: the title, the cover, the voice. When the author hits publish, every word will appear in this exact reading view, with the same type, margins, and ribbon-at-the-top progress indicator you're using now.",
+  "This story's full text hasn't been written yet — but its shape is here: the title, the cover, the voice. When the author hits publish, every word will appear in this exact reading view, with the same type, margins, and ribbon-at-the-top progress indicator you're using now.",
   "Consider this the room where words will arrive.",
 ];
 
-export function Reader({ story }: { story: Story }) {
+export function Reader({
+  story,
+  signedIn,
+}: {
+  story: StoryWire;
+  signedIn: boolean;
+}) {
+  const { setModal } = useAuth();
   const genre = GENRES.find((g) => g.id === story.genre) ?? GENRES[0];
-  const [liked, setLiked] = useState(false);
-  const [bookmarked, setBookmarked] = useState(false);
-  const [clapped, setClapped] = useState(false);
+  const [liked, setLiked] = useState(!!story.liked);
+  const [bookmarked, setBookmarked] = useState(!!story.bookmarked);
+  const [likeCount, setLikeCount] = useState(story.likes);
+  const [pending, setPending] = useState<"like" | "bookmark" | null>(null);
 
-  // Remember last-read story so the topbar's "Reading" can return to it.
+  // Remember the last-read story so the topbar's "Reading" can return.
   useEffect(() => {
     try {
-      localStorage.setItem("os-story", story.id);
+      localStorage.setItem("os-story", story.slug);
     } catch {
       /* ignore */
     }
-  }, [story.id]);
+  }, [story.slug]);
+
+  // Reset local UI state when the underlying story changes (route navigation).
+  useEffect(() => {
+    setLiked(!!story.liked);
+    setBookmarked(!!story.bookmarked);
+    setLikeCount(story.likes);
+  }, [story.id, story.liked, story.bookmarked, story.likes]);
 
   // Reading progress ribbon
   useEffect(() => {
@@ -32,7 +50,8 @@ export function Reader({ story }: { story: Story }) {
       const doc = document.documentElement;
       const scrolled = window.scrollY;
       const total = doc.scrollHeight - window.innerHeight;
-      const pct = total > 0 ? Math.min(100, Math.max(0, (scrolled / total) * 100)) : 0;
+      const pct =
+        total > 0 ? Math.min(100, Math.max(0, (scrolled / total) * 100)) : 0;
       if (ribbon) ribbon.style.width = pct + "%";
     };
     window.addEventListener("scroll", handler, { passive: true });
@@ -43,15 +62,61 @@ export function Reader({ story }: { story: Story }) {
     };
   }, [story.id]);
 
-  const body = story.body ?? FALLBACK_BODY(story);
-  const date = new Date(story.published).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const related = STORIES.filter(
-    (s) => s.id !== story.id && s.genre === story.genre,
-  ).slice(0, 3);
+  const toggleLike = async () => {
+    if (pending) return;
+    if (!signedIn) {
+      setModal({ mode: "signup", reason: "write" });
+      return;
+    }
+    const next = !liked;
+    setPending("like");
+    setLiked(next);
+    setLikeCount((c) => (next ? c + 1 : Math.max(0, c - 1)));
+    try {
+      const data = await apiSend<{ liked: boolean; likeCount: number }>(
+        `/api/v1/stories/${story.slug}/like`,
+        next ? "POST" : "DELETE",
+      );
+      setLiked(data.liked);
+      setLikeCount(data.likeCount);
+    } catch {
+      // Roll back on failure.
+      setLiked(!next);
+      setLikeCount((c) => (next ? Math.max(0, c - 1) : c + 1));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const toggleBookmark = async () => {
+    if (pending) return;
+    if (!signedIn) {
+      setModal({ mode: "signup", reason: "write" });
+      return;
+    }
+    const next = !bookmarked;
+    setPending("bookmark");
+    setBookmarked(next);
+    try {
+      await apiSend(
+        `/api/v1/stories/${story.slug}/bookmark`,
+        next ? "POST" : "DELETE",
+      );
+    } catch {
+      setBookmarked(!next);
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const body = story.body.length > 0 ? story.body : FALLBACK_BODY(story);
+  const date = story.publishedAt
+    ? new Date(story.publishedAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "";
   const midIndex = Math.floor(body.length / 2);
 
   return (
@@ -76,18 +141,20 @@ export function Reader({ story }: { story: Story }) {
       <h1>{story.title}</h1>
       <p className="synopsis">{story.synopsis}</p>
       <div className="author-row">
-        <div className="avatar">{story.authorInitial}</div>
+        <div className="avatar">{story.author.initial}</div>
         <div className="author-meta">
-          <b>{story.author}</b>
+          <b>{story.author.name}</b>
           <span>
-            {date} · {story.views.toLocaleString()} reads
+            {date ? `${date} · ` : ""}
+            {story.views.toLocaleString()} reads
           </span>
         </div>
         <div className="read-actions">
           <button
             className={`icon-btn ${liked ? "active" : ""}`}
             title="Like"
-            onClick={() => setLiked(!liked)}
+            onClick={toggleLike}
+            disabled={pending === "like"}
           >
             <svg
               width="16"
@@ -103,7 +170,8 @@ export function Reader({ story }: { story: Story }) {
           <button
             className={`icon-btn ${bookmarked ? "active" : ""}`}
             title="Bookmark"
-            onClick={() => setBookmarked(!bookmarked)}
+            onClick={toggleBookmark}
+            disabled={pending === "bookmark"}
           >
             <svg
               width="16"
@@ -158,20 +226,21 @@ export function Reader({ story }: { story: Story }) {
         <div className="end-mark">· · ·</div>
         <div className="applause">
           <button
-            className={clapped ? "active" : ""}
-            onClick={() => setClapped(!clapped)}
+            className={liked ? "active" : ""}
+            onClick={toggleLike}
+            disabled={pending === "like"}
           >
             <svg
               width="14"
               height="14"
               viewBox="0 0 24 24"
-              fill={clapped ? "currentColor" : "none"}
+              fill={liked ? "currentColor" : "none"}
               stroke="currentColor"
               strokeWidth="2"
             >
               <path d="M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.7l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.5 1-1a5.5 5.5 0 000-7.8z" />
             </svg>
-            {clapped ? story.likes + 1 : story.likes} claps
+            {likeCount} claps
           </button>
           <button>
             <svg
@@ -200,71 +269,6 @@ export function Reader({ story }: { story: Story }) {
             Share
           </button>
         </div>
-        {related.length > 0 && (
-          <div
-            style={{
-              marginTop: 40,
-              paddingTop: 24,
-              borderTop: "1px solid var(--rule)",
-            }}
-          >
-            <h4
-              style={{
-                fontFamily: "var(--mono)",
-                fontSize: 10,
-                letterSpacing: "0.15em",
-                textTransform: "uppercase",
-                color: "var(--ink-mute)",
-                margin: "0 0 14px",
-              }}
-            >
-              More in {genre.label}
-            </h4>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: 16,
-              }}
-            >
-              {related.map((r) => (
-                <Link
-                  key={r.id}
-                  href={`/s/${r.id}`}
-                  style={{
-                    cursor: "pointer",
-                    padding: "12px 0",
-                    borderTop: "1px solid var(--rule-soft)",
-                    textDecoration: "none",
-                    color: "inherit",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontFamily: "var(--serif)",
-                      fontSize: 16,
-                      fontWeight: 500,
-                      lineHeight: 1.2,
-                      marginBottom: 4,
-                    }}
-                  >
-                    {r.title}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontFamily: "var(--mono)",
-                      color: "var(--ink-mute)",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    {r.author} · {r.minutes} min
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </article>
   );

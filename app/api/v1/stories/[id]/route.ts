@@ -89,7 +89,24 @@ export async function GET(
       if (!blocked) await recordView(story.id);
     }
 
-    return json({ story: serializeStory(story, story.author) });
+    // Per-viewer state — only populated when there's a session, so
+    // anonymous callers don't get personalized fields.
+    let viewerState: { liked: boolean; bookmarked: boolean } | undefined;
+    if (user) {
+      const [like, bookmark] = await Promise.all([
+        db.like.findUnique({
+          where: { userId_storyId: { userId: user.id, storyId: story.id } },
+          select: { userId: true },
+        }),
+        db.bookmark.findUnique({
+          where: { userId_storyId: { userId: user.id, storyId: story.id } },
+          select: { userId: true },
+        }),
+      ]);
+      viewerState = { liked: !!like, bookmarked: !!bookmark };
+    }
+
+    return json({ story: serializeStory(story, story.author, viewerState) });
   } catch (err) {
     return handleError(err);
   }
