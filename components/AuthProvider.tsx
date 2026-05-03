@@ -310,7 +310,7 @@ function AuthModal() {
               </svg>
             </button>
             <div className="auth-oauth">
-              <button type="button" className="oauth-btn" disabled>
+              <a className="oauth-btn" href="/api/v1/auth/oauth/google/start">
                 <svg width="16" height="16" viewBox="0 0 24 24">
                   <path
                     fill="#4285f4"
@@ -330,8 +330,8 @@ function AuthModal() {
                   />
                 </svg>
                 Continue with Google
-              </button>
-              <button type="button" className="oauth-btn" disabled>
+              </a>
+              <a className="oauth-btn" href="/api/v1/auth/oauth/github/start">
                 <svg
                   width="16"
                   height="16"
@@ -341,7 +341,7 @@ function AuthModal() {
                   <path d="M12 .5a11.5 11.5 0 00-3.64 22.42c.58.1.79-.25.79-.56v-2.2c-3.2.7-3.87-1.37-3.87-1.37-.53-1.33-1.3-1.68-1.3-1.68-1.05-.72.08-.7.08-.7 1.17.08 1.78 1.2 1.78 1.2 1.04 1.77 2.72 1.26 3.38.96.1-.75.4-1.26.74-1.55-2.55-.3-5.24-1.28-5.24-5.68 0-1.26.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 015.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.24 2.76.12 3.05.74.8 1.18 1.82 1.18 3.08 0 4.41-2.7 5.38-5.26 5.66.41.36.78 1.06.78 2.14v3.18c0 .31.21.67.79.56A11.5 11.5 0 0012 .5z" />
                 </svg>
                 Continue with GitHub
-              </button>
+              </a>
             </div>
           </form>
           <div className="auth-switch">
