@@ -2,38 +2,19 @@
   "name": "our-story",
   "version": "0.1.0",
   "private": true,
+  "description": "Workspaces root. Apps live in apps/*; shared packages in packages/*.",
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint",
-    "db:migrate": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts"
+    "web": "pnpm --filter @our-story/web",
+    "mobile": "pnpm --filter @our-story/mobile",
+    "dev": "pnpm --filter @our-story/web run dev",
+    "build": "pnpm --filter @our-story/web run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r exec tsc --noEmit",
+    "db:migrate": "pnpm --filter @our-story/web run db:migrate",
+    "db:seed": "pnpm --filter @our-story/web run db:seed"
   },
-  "dependencies": {
-    "@node-rs/argon2": "^2.0.2",
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
-    "@upstash/ratelimit": "^2.0.8",
-    "@upstash/redis": "^1.37.0",
-    "arctic": "^3.7.0",
-    "jose": "^6.2.3",
-    "next": "^15.1.0",
-    "pg": "^8.20.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "zod": "^4.4.2"
+  "engines": {
+    "node": ">=20"
   },
-  "devDependencies": {
-    "@types/node": "^22",
-    "@types/pg": "^8.20.0",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "dotenv": "^17.4.2",
-    "eslint": "^9",
-    "eslint-config-next": "^15.1.0",
-    "prisma": "^7.8.0",
-    "tsx": "^4.21.0",
-    "typescript": "^5"
-  }
+  "packageManager": "pnpm@10.12.4"
 }

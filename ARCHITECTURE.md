@@ -2,6 +2,8 @@
 
 This is a working note, not exhaustive docs. Point of view: a developer who just opened the repo and wants to know how it fits together before changing anything.
 
+The repo is a pnpm workspaces monorepo: `apps/web` (the Next.js backend documented here), `apps/mobile` (Expo/RN client, Part II), and `packages/api-types` (shared Zod schemas + inferred TS types). Path references below are relative to `apps/web/` unless otherwise marked.
+
 ## One repo, two surfaces
 
 ```
@@ -45,7 +47,7 @@ Featured invariant ("at most one") is enforced in the seed and (eventually) in t
 
 ## API surface
 
-All under `/api/v1`. Public routes are anonymous-friendly; auth'd routes require either a cookie (web) or a Bearer token (mobile, once `lib/jwt.ts#verifyAccessToken` is plumbed into a guard for the mobile-only routes).
+All under `/api/v1`. Public routes are anonymous-friendly; auth'd routes require either a cookie (web) or a Bearer token (mobile). `lib/auth-guard.ts#getAuthenticatedUser` resolves cookie first (early return on web traffic), then falls back to `Authorization: Bearer <RS256 JWT>` via `lib/jwt.ts#verifyAccessToken`. Both paths converge on the same `PublicUser` shape.
 
 ### Auth
 
