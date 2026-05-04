@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "OurStory",
+    "slug": "ourstory",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "ourstory",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "test.ourstory.app"
+    },
+    "android": {
+      "package": "test.ourstory.app",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

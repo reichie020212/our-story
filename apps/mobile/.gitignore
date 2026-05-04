@@ -1,0 +1,14 @@
+node_modules/
+.expo/
+.expo-shared/
+dist/
+
+# Native artifacts (not generated yet — we're managed-only for now)
+ios/
+android/
+
+# Misc
+*.log
+*.tsbuildinfo
+expo-env.d.ts
+.DS_Store
