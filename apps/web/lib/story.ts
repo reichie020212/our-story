@@ -1,4 +1,11 @@
-import type { Story, User } from "@prisma/client";
+import type { Story } from "@prisma/client";
+import type { StoryAuthor, StoryWire } from "@our-story/api-types";
+
+// Re-export the wire-format types so callers in this app keep their
+// existing import path (`@/lib/story`) but the source of truth is the
+// shared @our-story/api-types package.
+export type { StoryAuthor, StoryWire };
+export type StoryAuthorSlice = StoryAuthor;
 
 const WORDS_PER_MINUTE = 220;
 
@@ -14,46 +21,11 @@ export function minutesFromBody(body: unknown): number {
   return Math.max(1, Math.round(words / WORDS_PER_MINUTE));
 }
 
-export type StoryAuthorSlice = Pick<
-  User,
-  "id" | "name" | "handle" | "initial"
->;
-
-export type StoryWire = {
-  id: string;
-  slug: string;
-  title: string;
-  synopsis: string;
-  body: string[];
-  genre: Story["genre"];
-  length: Story["length"];
-  tags: string[];
-  status: Story["status"];
-  featured: boolean;
-  publishedAt: string | null;
-  minutes: number;
-  views: number;
-  likes: number;
-  createdAt: string;
-  updatedAt: string;
-  author: {
-    id: string;
-    name: string;
-    handle: string;
-    initial: string;
-  };
-  // Per-viewer state. Populated only on GET single story when a session
-  // is present; absent (undefined) for the list endpoint and anonymous
-  // callers, so the UI can still render fine without them.
-  liked?: boolean;
-  bookmarked?: boolean;
-};
-
 /** Shape a Story row + author for the JSON wire. Internal-only fields
  *  (deletedAt, raw author email) never leak. */
 export function serializeStory(
   story: Story,
-  author: StoryAuthorSlice,
+  author: StoryAuthor,
   viewerState?: { liked?: boolean; bookmarked?: boolean },
 ): StoryWire {
   return {

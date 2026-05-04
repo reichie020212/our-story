@@ -10,7 +10,13 @@
 import { randomBytes } from "node:crypto";
 import { hash, verify } from "@node-rs/argon2";
 import type { User } from "@prisma/client";
+import type { PublicUser } from "@our-story/api-types";
 import { db } from "./db";
+
+// Re-export PublicUser so existing `import { type PublicUser } from
+// "./auth"` callers in apps/web keep working; the source of truth is
+// the shared @our-story/api-types package.
+export type { PublicUser };
 
 const SESSION_TTL_DAYS = 30;
 const SESSION_RENEW_THRESHOLD_DAYS = 15;
@@ -20,14 +26,6 @@ const ARGON2_OPTS = {
   outputLen: 32,
   parallelism: 1,
 } as const;
-
-export type PublicUser = {
-  id: string;
-  email: string;
-  name: string;
-  handle: string;
-  initial: string;
-};
 
 export type SessionValidation =
   | { session: null; user: null }

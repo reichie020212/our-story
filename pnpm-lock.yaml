@@ -13,6 +13,9 @@ importers:
       '@node-rs/argon2':
         specifier: ^2.0.2
         version: 2.0.2
+      '@our-story/api-types':
+        specifier: workspace:*
+        version: link:../../packages/api-types
       '@prisma/adapter-pg':
         specifier: ^7.8.0
         version: 7.8.0
@@ -77,6 +80,12 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+
+  packages/api-types:
+    dependencies:
+      zod:
+        specifier: ^4.4.2
+        version: 4.4.3
 
 packages:
 
