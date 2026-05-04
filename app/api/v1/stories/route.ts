@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { error, json, zodError } from "@/lib/api";
 import { handleError, requireUser } from "@/lib/auth-guard";
@@ -46,12 +46,72 @@ const SORT_ORDERS: Record<
   shortest: [{ minutes: "asc" }, { id: "desc" }],
 };
 
+/** Full-text search path. Used when `q` is set; ignores `sort` because
+ *  relevance wins (mixing ts_rank with popularity gets messy). Cursor
+ *  is an offset string here, not a story id — callers just round-trip
+ *  whatever nextCursor we returned, so the format change is invisible. */
+async function listBySearch(args: {
+  q: string;
+  genre?: (typeof GENRES)[number];
+  length?: (typeof LENGTHS)[number];
+  tag?: string;
+  limit: number;
+  cursor?: string;
+}) {
+  const { q, genre, length, tag, limit, cursor } = args;
+  const offset = cursor ? Math.max(0, parseInt(cursor, 10) || 0) : 0;
+  const likeQ = `%${q}%`;
+
+  const filters: Prisma.Sql[] = [
+    Prisma.sql`s.status = 'published'::"StoryStatus"`,
+    Prisma.sql`s.deleted_at IS NULL`,
+    Prisma.sql`(s.search_vector @@ websearch_to_tsquery('english'::regconfig, ${q}) OR u.name ILIKE ${likeQ})`,
+  ];
+  if (genre) filters.push(Prisma.sql`s.genre = ${genre}::"Genre"`);
+  if (length) filters.push(Prisma.sql`s.length = ${length}::"StoryLength"`);
+  if (tag) filters.push(Prisma.sql`${tag} = ANY(s.tags)`);
+
+  const rows = await db.$queryRaw<{ id: string; rank: number }[]>`
+    SELECT s.id,
+           ts_rank(s.search_vector, websearch_to_tsquery('english'::regconfig, ${q})) AS rank
+    FROM stories s
+    LEFT JOIN users u ON s.author_id = u.id
+    WHERE ${Prisma.join(filters, " AND ")}
+    ORDER BY rank DESC, s.published_at DESC NULLS LAST, s.id DESC
+    LIMIT ${limit + 1}
+    OFFSET ${offset}
+  `;
+
+  if (rows.length === 0) return json({ stories: [], nextCursor: null });
+
+  // Hydrate via Prisma so we get the same author shape and serializer
+  // path as the non-search list. The findMany doesn't preserve our rank
+  // order, so re-sort using the row order from the raw query.
+  const hydrated = await db.story.findMany({
+    where: { id: { in: rows.map((r) => r.id) } },
+    include: { author: true },
+  });
+  const order = new Map(rows.map((r, i) => [r.id, i] as const));
+  hydrated.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+
+  const hasMore = hydrated.length > limit;
+  const page = hasMore ? hydrated.slice(0, limit) : hydrated;
+  const nextCursor = hasMore ? String(offset + page.length) : null;
+
+  return json({
+    stories: page.map((s) => serializeStory(s, s.author)),
+    nextCursor,
+  });
+}
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const parsed = ListQuery.safeParse(Object.fromEntries(url.searchParams));
     if (!parsed.success) return zodError(parsed.error);
     const { genre, length, tag, q, sort, limit, cursor } = parsed.data;
+
+    if (q) return await listBySearch({ q, genre, length, tag, limit, cursor });
 
     const where: Prisma.StoryWhereInput = {
       status: "published",
@@ -60,17 +120,6 @@ export async function GET(req: Request) {
     if (genre) where.genre = genre;
     if (length) where.length = length;
     if (tag) where.tags = { has: tag };
-    if (q) {
-      // ILIKE search on title / synopsis / tags / author name. TODO:
-      // swap for a tsvector + GIN index once we have enough stories
-      // for ILIKE to feel slow (memory: backend decisions doc).
-      where.OR = [
-        { title: { contains: q, mode: "insensitive" } },
-        { synopsis: { contains: q, mode: "insensitive" } },
-        { tags: { has: q.toLowerCase() } },
-        { author: { name: { contains: q, mode: "insensitive" } } },
-      ];
-    }
 
     const stories = await db.story.findMany({
       where,
