@@ -142,6 +142,15 @@ export type StoryListResponse = z.infer<typeof StoryListResponseSchema>;
 export const StoryResponseSchema = z.object({ story: StoryWireSchema });
 export type StoryResponse = z.infer<typeof StoryResponseSchema>;
 
+/** Trending and featured endpoints return a list with no pagination
+ *  (top-N rolling) so they share a simpler shape than the cursored list. */
+export const StoryListNoCursorResponseSchema = z.object({
+  stories: z.array(StoryWireSchema),
+});
+export type StoryListNoCursorResponse = z.infer<
+  typeof StoryListNoCursorResponseSchema
+>;
+
 // ---------- Engagement ----------
 
 export const LikeResponseSchema = z.object({

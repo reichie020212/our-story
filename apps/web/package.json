@@ -8,6 +8,8 @@
     "vercel-build": "prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts"
   },
@@ -36,6 +38,7 @@
     "eslint-config-next": "^15.1.0",
     "prisma": "^7.8.0",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.5"
   }
 }
