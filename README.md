@@ -52,8 +52,9 @@ pnpm db:seed
 # 4. Run web
 pnpm dev                      # → http://localhost:3000
 
-# 5. Run mobile (once apps/mobile is scaffolded)
-pnpm mobile run start         # → Expo dev tools
+# 5. Run mobile
+pnpm mobile start             # → Expo dev tools, scan QR with Expo Go
+# For physical devices: EXPO_PUBLIC_API_BASE_URL=http://<lan-ip>:3000 pnpm mobile start
 ```
 
 ## Common commands
@@ -64,8 +65,11 @@ pnpm mobile run start         # → Expo dev tools
 | `pnpm build` | Production build of the web app |
 | `pnpm lint` | ESLint across all workspaces |
 | `pnpm typecheck` | `tsc --noEmit` across all workspaces |
+| `pnpm web test` | Vitest contract suite — fast, in-process |
+| `pnpm web test:integration` | Vitest integration suite — needs `pnpm dev` running in another terminal |
 | `pnpm db:migrate` | `prisma migrate deploy` against `DATABASE_URL_DIRECT` |
 | `pnpm db:seed` | Idempotent seed |
+| `pnpm mobile start` | Expo dev tools (QR + simulator launchers) |
 | `pnpm web <script>` | Pass-through to the web app's package.json scripts |
 | `pnpm mobile <script>` | Pass-through to the mobile app's package.json scripts |
 
@@ -79,17 +83,39 @@ pnpm mobile run start         # → Expo dev tools
 - Browse: list / featured / trending / tags trending
 - Engagement: likes / bookmarks / view dedup + Upstash rate limit
 - Frontend wiring: Browse / Reader / Composer talk to the API
-- Mobile auth: RS256 access + opaque refresh, Bearer guard wired into all `/api/v1/*` protected routes
-- Search: tsvector + GIN with weighted ranking and websearch parser
+- Mobile auth: RS256 access + opaque refresh, dedicated `/auth/mobile/{login,signup,refresh,logout}` routes; Bearer guard wired into every protected route
+- Search: tsvector + GIN with weighted ranking, `websearch_to_tsquery` parser, IMMUTABLE wrapper function
+- Tests: 9 contract + 18 integration (auth + mutation + validation flows)
 
-**Part II — Mobile client: scaffolded, in progress.** See `apps/mobile/README.md` once it lands.
+**Part II — Mobile client: feature-complete for v1.** See `apps/mobile/README.md` for layout + auth boot sequence + how to add a screen / query / mutation.
+- Sign-in / sign-up / sign-out flow with redirect-on-state
+- Browse: search + trending tag chips + featured banner + infinite scroll
+- Reader: paragraph rendering with optimistic like + bookmark
+- Bookmarks tab + Me tab (own drafts + published)
+- Token storage in OS keychain via `expo-secure-store`, single-flight refresh on 401
 
-Image features (covers, inline blocks, lightbox) are intentionally out of v1 — see `apps/web/prisma/schema.prisma` for the schema-level breadcrumbs (`Story.body` kept as JSON `string[]` so a future image-block return doesn't migrate).
+**Out of scope for v1** (deferred by product decision):
+- Composer-on-mobile (web-only)
+- OAuth on mobile (would need WebView + `ourstory://` redirect)
+- Image features (covers, inline blocks, lightbox) — `Story.body` is kept as JSON `string[]` so a future image-block return doesn't migrate.
+- Push notifications, comments, follows.
 
 ## API surface
 
 See `ARCHITECTURE.md` for the full list and rate limits, and `packages/api-types` for the typed wire format.
 
+## Deployment
+
+`DEPLOYMENT.md` has the Vercel checklist (root directory = `apps/web`, env vars, `vercel-build` script, OAuth callbacks, mobile `EXPO_PUBLIC_API_BASE_URL` wiring).
+
 ## Contributing
 
-Conventional Commits, signed (`-s -S`). Don't auto-create git worktrees on this repo. Run `pnpm lint && pnpm typecheck && pnpm build` before committing.
+Conventional Commits, signed (`-s -S`), no co-author trailer. Don't auto-create git worktrees on this repo. Pre-commit:
+
+```bash
+pnpm lint && pnpm typecheck && pnpm web test && pnpm build
+```
+
+If you touched the auth surface or a route handler, also run `pnpm web test:integration` (with `pnpm dev` going in another terminal).
+
+`CLAUDE.md` and `GEMINI.md` document the AI-assisted workflow conventions for this repo.
