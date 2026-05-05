@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { db } from "@/lib/db";
 import { error, json, zodError } from "@/lib/api";
 import {
   InvalidRefreshTokenError,
@@ -32,8 +33,24 @@ export async function POST(req: Request) {
 
   try {
     const { userId, refresh } = await rotateRefreshToken(parsed.data.refreshToken);
-    const access = await signAccessToken(userId);
+    const [access, user] = await Promise.all([
+      signAccessToken(userId),
+      db.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          handle: true,
+          initial: true,
+        },
+      }),
+    ]);
+    // Refresh token row referenced a user that no longer exists.
+    // Treat this exactly like an invalid refresh — log them out.
+    if (!user) throw new InvalidRefreshTokenError();
     return json({
+      user,
       accessToken: access.token,
       accessTokenExpiresAt: access.expiresAt.toISOString(),
       refreshToken: refresh.token,

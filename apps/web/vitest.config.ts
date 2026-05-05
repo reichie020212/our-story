@@ -3,7 +3,12 @@ import path from "node:path";
 
 export default defineConfig({
   test: {
-    // Tests sit next to the code they cover; one suite, one file.
+    // Two test categories share __tests__/:
+    //   • *.test.ts          → fast, in-process (default `pnpm test`)
+    //   • *.integration.test.ts → hit a live dev server, opt-in via
+    //     `pnpm test:integration`
+    // The default `test` script narrows via CLI to *.test.ts so the
+    // integration files are skipped without a live server.
     include: ["__tests__/**/*.test.ts"],
 
     // Read .env so tests have DATABASE_URL etc. available the same
