@@ -10,10 +10,12 @@ import {
   StoryListNoCursorResponseSchema,
   StoryListResponseSchema,
   StoryResponseSchema,
+  TrendingTagsResponseSchema,
   type BookmarkResponse,
   type LikeResponse,
   type StoryListResponse,
   type StoryWire,
+  type TrendingTagsResponse,
 } from "@our-story/api-types";
 import { apiFetch } from "./api";
 
@@ -24,17 +26,20 @@ export const queryKeys = {
   bookmarks: () => ["bookmarks"] as const,
   featured: () => ["featured"] as const,
   myStories: () => ["me", "stories"] as const,
+  trendingTags: () => ["tags", "trending"] as const,
 } as const;
 
 export async function fetchStoriesPage(args: {
   cursor?: string;
   limit?: number;
   q?: string;
+  tag?: string;
 }): Promise<StoryListResponse> {
   const params = new URLSearchParams();
   if (args.cursor) params.set("cursor", args.cursor);
   if (args.limit) params.set("limit", String(args.limit));
   if (args.q) params.set("q", args.q);
+  if (args.tag) params.set("tag", args.tag);
   const qs = params.toString();
   const path = `/api/v1/stories${qs ? `?${qs}` : ""}`;
   const body = await apiFetch<unknown>(path);
@@ -75,6 +80,11 @@ export async function fetchBookmarks(): Promise<StoryWire[]> {
 export async function fetchMyStories(): Promise<StoryWire[]> {
   const body = await apiFetch<unknown>("/api/v1/me/stories");
   return StoryListNoCursorResponseSchema.parse(body).stories;
+}
+
+export async function fetchTrendingTags(): Promise<TrendingTagsResponse["tags"]> {
+  const body = await apiFetch<unknown>("/api/v1/tags/trending");
+  return TrendingTagsResponseSchema.parse(body).tags;
 }
 
 export async function toggleLike(
