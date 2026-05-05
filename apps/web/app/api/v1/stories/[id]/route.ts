@@ -26,7 +26,12 @@ const writeLimiter = () => getLimiter("write", 10, "1 m");
  *  constraint on (storyId, sessionHash) gives us a 24h dedup for free.
  *  Increments Story.viewCount only when a fresh row was inserted, so the
  *  counter doesn't double-count the same reader. */
-async function recordView(storyId: string): Promise<void> {
+/** Returns true if this request actually recorded a fresh view, false
+ *  if the (story, ip+ua, day_bucket) tuple was already counted in the
+ *  last 24h. Callers can use the boolean to bump the response's
+ *  viewCount locally so the same request that records a view also
+ *  reflects it in the response (rather than showing stale n-1). */
+async function recordView(storyId: string): Promise<boolean> {
   const [ip, ua] = await Promise.all([clientIp(), userAgent()]);
   const sessionHash = viewDedupHash(ip, ua);
   try {
@@ -37,6 +42,7 @@ async function recordView(storyId: string): Promise<void> {
         data: { viewCount: { increment: 1 } },
       }),
     ]);
+    return true;
   } catch (err) {
     // P2002 = unique violation = already counted in this 24h bucket.
     // Anything else surfaces — viewCount staying off by one is fine,
@@ -47,7 +53,7 @@ async function recordView(storyId: string): Promise<void> {
       "code" in err &&
       (err as { code: unknown }).code === "P2002"
     ) {
-      return;
+      return false;
     }
     throw err;
   }
@@ -84,9 +90,17 @@ export async function GET(
     // makes it past the per-session view limiter. Owners reading their
     // own work or readers blocked by the limiter still get the story
     // back — the counter just doesn't move.
+    //
+    // When we DO record a fresh view, locally bump the in-memory
+    // story.viewCount so the response reflects the increment we just
+    // made (otherwise the caller sees the pre-increment value and
+    // would only see the new count on a subsequent fetch).
     if (story.status === "published" && story.authorId !== user?.id) {
       const blocked = await enforce(viewLimiter(), await rateLimitKey());
-      if (!blocked) await recordView(story.id);
+      if (!blocked) {
+        const recorded = await recordView(story.id);
+        if (recorded) story.viewCount += 1;
+      }
     }
 
     // Per-viewer state — only populated when there's a session, so
