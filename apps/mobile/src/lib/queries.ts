@@ -22,6 +22,7 @@ export const queryKeys = {
     ["stories", { q: params.q ?? null }] as const,
   story: (idOrSlug: string) => ["story", idOrSlug] as const,
   bookmarks: () => ["bookmarks"] as const,
+  featured: () => ["featured"] as const,
 } as const;
 
 export async function fetchStoriesPage(args: {
@@ -44,6 +45,25 @@ export async function fetchStory(idOrSlug: string): Promise<StoryWire> {
     `/api/v1/stories/${encodeURIComponent(idOrSlug)}`,
   );
   return StoryResponseSchema.parse(body).story;
+}
+
+export async function fetchFeatured(): Promise<StoryWire | null> {
+  try {
+    const body = await apiFetch<unknown>("/api/v1/stories/featured");
+    return StoryResponseSchema.parse(body).story;
+  } catch (err) {
+    // 404 "no_featured" means there's currently no featured story —
+    // a normal state, not an error. Anything else propagates.
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "status" in err &&
+      (err as { status: number }).status === 404
+    ) {
+      return null;
+    }
+    throw err;
+  }
 }
 
 export async function fetchBookmarks(): Promise<StoryWire[]> {

@@ -20,14 +20,8 @@ import {
   MobileAuthResponseSchema,
   type MobileAuthResponse,
   type PublicUser,
-  UserResponseSchema,
 } from "@our-story/api-types";
-import {
-  apiFetch,
-  apiFetchAnonymous,
-  ApiFetchError,
-  configureApi,
-} from "../lib/api";
+import { apiFetchAnonymous, configureApi } from "../lib/api";
 import {
   clearRefreshToken,
   loadRefreshToken,
@@ -126,16 +120,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled) setState({ status: "signed-out" });
         return;
       }
+      // refreshRef.current() does the rotation AND calls applyAuth
+      // (which sets state to signed-in with the user the server
+      // returned). No follow-up /auth/me needed — the refresh
+      // response already carries it.
       const newAccess = await refreshRef.current();
-      if (!newAccess) return; // refreshRef already cleared state
-      try {
-        const me = await apiFetch<unknown>("/api/v1/auth/me");
-        const parsed = UserResponseSchema.parse(me);
-        if (!cancelled) setState({ status: "signed-in", user: parsed.user });
-      } catch (err) {
-        if (err instanceof ApiFetchError && err.status === 401) {
-          if (!cancelled) await clearAuth();
-        }
+      if (!newAccess && !cancelled) {
+        // refreshRef already cleared state on failure, but make the
+        // signed-out transition explicit in case the boot raced with
+        // a render that's expecting `loading`.
+        await clearAuth();
       }
     })();
 

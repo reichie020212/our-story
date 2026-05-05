@@ -9,11 +9,16 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { StoryWire } from "@our-story/api-types";
 
+import { FeaturedCard } from "@/src/components/FeaturedCard";
 import { StoryCard } from "@/src/components/StoryCard";
-import { fetchStoriesPage, queryKeys } from "@/src/lib/queries";
+import {
+  fetchFeatured,
+  fetchStoriesPage,
+  queryKeys,
+} from "@/src/lib/queries";
 import { colors, radius, spacing, typography } from "@/src/theme/tokens";
 
 const PAGE_SIZE = 12;
@@ -43,7 +48,23 @@ export default function BrowseScreen() {
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
 
+  // Featured story is fetched separately so it can scroll with the
+  // list as a ListHeaderComponent. Hidden once the user types a
+  // search query — search results take over the surface entirely.
+  const featuredQuery = useQuery({
+    queryKey: queryKeys.featured(),
+    queryFn: fetchFeatured,
+    enabled: debounced.length === 0,
+  });
+
   const stories: StoryWire[] = query.data?.pages.flatMap((p) => p.stories) ?? [];
+
+  // Drop the featured story from the regular list so it doesn't show
+  // up twice (once in the hero card, once below).
+  const featuredId = featuredQuery.data?.id;
+  const listStories = featuredId
+    ? stories.filter((s) => s.id !== featuredId)
+    : stories;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -81,10 +102,15 @@ export default function BrowseScreen() {
         </View>
       ) : (
         <FlashList
-          data={stories}
+          data={listStories}
           keyExtractor={(s) => s.id}
           renderItem={({ item }) => <StoryCard story={item} />}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            featuredQuery.data ? (
+              <FeaturedCard story={featuredQuery.data} />
+            ) : null
+          }
           onEndReachedThreshold={0.5}
           onEndReached={() => {
             if (query.hasNextPage && !query.isFetchingNextPage) {
@@ -94,7 +120,10 @@ export default function BrowseScreen() {
           refreshControl={
             <RefreshControl
               refreshing={query.isRefetching && !query.isFetchingNextPage}
-              onRefresh={() => query.refetch()}
+              onRefresh={() => {
+                query.refetch();
+                featuredQuery.refetch();
+              }}
               tintColor={colors.dim}
             />
           }
