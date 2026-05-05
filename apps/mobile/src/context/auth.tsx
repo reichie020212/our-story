@@ -161,21 +161,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await applyAuth(parsed);
       },
       signUp: async (email, password, name) => {
-        // /auth/signup is web-only (cookie session) — for mobile we
-        // create the account via the web endpoint then immediately
-        // exchange credentials for tokens via /auth/mobile/login.
-        await apiFetchAnonymous<unknown>("/api/v1/auth/signup", {
-          method: "POST",
-          body: JSON.stringify({ email, password, name }),
-        });
-        const loginBody = await apiFetchAnonymous<unknown>(
-          "/api/v1/auth/mobile/login",
+        const body = await apiFetchAnonymous<unknown>(
+          "/api/v1/auth/mobile/signup",
           {
             method: "POST",
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ email, password, name }),
           },
         );
-        const parsed = MobileAuthResponseSchema.parse(loginBody);
+        const parsed = MobileAuthResponseSchema.parse(body);
         await applyAuth(parsed);
       },
       signOut: async () => {

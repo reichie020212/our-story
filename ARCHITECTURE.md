@@ -59,6 +59,7 @@ All under `/api/v1`. Public routes are anonymous-friendly; auth'd routes require
 | GET | `/auth/me` | current user or 401 |
 | GET | `/auth/oauth/[provider]/start` | Google / GitHub, sets state + PKCE cookies, 302s to provider |
 | GET | `/auth/oauth/[provider]/callback` | exchange + link-by-email or create, starts session |
+| POST | `/auth/mobile/signup` | email + password + name → user + access + refresh (no cookie session) |
 | POST | `/auth/mobile/login` | email + password → access (RS256, 15min) + refresh (opaque, 30d) |
 | POST | `/auth/mobile/refresh` | refresh → new access + new refresh (rotate-on-use) |
 | POST | `/auth/mobile/logout` | revoke a presented refresh token |
