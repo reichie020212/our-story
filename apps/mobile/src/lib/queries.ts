@@ -23,6 +23,7 @@ export const queryKeys = {
   story: (idOrSlug: string) => ["story", idOrSlug] as const,
   bookmarks: () => ["bookmarks"] as const,
   featured: () => ["featured"] as const,
+  myStories: () => ["me", "stories"] as const,
 } as const;
 
 export async function fetchStoriesPage(args: {
@@ -68,6 +69,11 @@ export async function fetchFeatured(): Promise<StoryWire | null> {
 
 export async function fetchBookmarks(): Promise<StoryWire[]> {
   const body = await apiFetch<unknown>("/api/v1/me/bookmarks");
+  return StoryListNoCursorResponseSchema.parse(body).stories;
+}
+
+export async function fetchMyStories(): Promise<StoryWire[]> {
+  const body = await apiFetch<unknown>("/api/v1/me/stories");
   return StoryListNoCursorResponseSchema.parse(body).stories;
 }
 
