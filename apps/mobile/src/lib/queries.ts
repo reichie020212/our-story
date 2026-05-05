@@ -5,8 +5,13 @@
  * one place.
  */
 import {
+  BookmarkResponseSchema,
+  LikeResponseSchema,
+  StoryListNoCursorResponseSchema,
   StoryListResponseSchema,
   StoryResponseSchema,
+  type BookmarkResponse,
+  type LikeResponse,
   type StoryListResponse,
   type StoryWire,
 } from "@our-story/api-types";
@@ -39,4 +44,31 @@ export async function fetchStory(idOrSlug: string): Promise<StoryWire> {
     `/api/v1/stories/${encodeURIComponent(idOrSlug)}`,
   );
   return StoryResponseSchema.parse(body).story;
+}
+
+export async function fetchBookmarks(): Promise<StoryWire[]> {
+  const body = await apiFetch<unknown>("/api/v1/me/bookmarks");
+  return StoryListNoCursorResponseSchema.parse(body).stories;
+}
+
+export async function toggleLike(
+  idOrSlug: string,
+  next: boolean,
+): Promise<LikeResponse> {
+  const body = await apiFetch<unknown>(
+    `/api/v1/stories/${encodeURIComponent(idOrSlug)}/like`,
+    { method: next ? "POST" : "DELETE" },
+  );
+  return LikeResponseSchema.parse(body);
+}
+
+export async function toggleBookmark(
+  idOrSlug: string,
+  next: boolean,
+): Promise<BookmarkResponse> {
+  const body = await apiFetch<unknown>(
+    `/api/v1/stories/${encodeURIComponent(idOrSlug)}/bookmark`,
+    { method: next ? "POST" : "DELETE" },
+  );
+  return BookmarkResponseSchema.parse(body);
 }

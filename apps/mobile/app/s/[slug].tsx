@@ -8,21 +8,82 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { StoryWire } from "@our-story/api-types";
 
-import { fetchStory, queryKeys } from "@/src/lib/queries";
+import {
+  fetchStory,
+  queryKeys,
+  toggleBookmark,
+  toggleLike,
+} from "@/src/lib/queries";
 import { colors, radius, spacing, typography } from "@/src/theme/tokens";
 
 export default function ReaderScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const slugStr = typeof slug === "string" ? slug : "";
+  const qc = useQueryClient();
 
   const query = useQuery({
     queryKey: queryKeys.story(slugStr),
     queryFn: () => fetchStory(slugStr),
     enabled: slugStr.length > 0,
   });
+
+  // Optimistic toggle: update the cached story immediately, then
+  // reconcile with the server. Bookmark toggles also invalidate the
+  // bookmarks list so the Bookmarks tab refreshes on next visit.
+  const likeMutation = useMutation({
+    mutationFn: (next: boolean) => toggleLike(slugStr, next),
+    onMutate: async (next) => {
+      await qc.cancelQueries({ queryKey: queryKeys.story(slugStr) });
+      const prev = qc.getQueryData<StoryWire>(queryKeys.story(slugStr));
+      if (prev) {
+        qc.setQueryData<StoryWire>(queryKeys.story(slugStr), {
+          ...prev,
+          liked: next,
+          likes: prev.likes + (next ? 1 : -1),
+        });
+      }
+      return { prev };
+    },
+    onError: (_err, _next, ctx) => {
+      if (ctx?.prev) qc.setQueryData(queryKeys.story(slugStr), ctx.prev);
+    },
+    onSettled: (data) => {
+      if (data) {
+        qc.setQueryData<StoryWire>(queryKeys.story(slugStr), (prev) =>
+          prev ? { ...prev, liked: data.liked, likes: data.likeCount } : prev,
+        );
+      }
+    },
+  });
+
+  const bookmarkMutation = useMutation({
+    mutationFn: (next: boolean) => toggleBookmark(slugStr, next),
+    onMutate: async (next) => {
+      await qc.cancelQueries({ queryKey: queryKeys.story(slugStr) });
+      const prev = qc.getQueryData<StoryWire>(queryKeys.story(slugStr));
+      if (prev) {
+        qc.setQueryData<StoryWire>(queryKeys.story(slugStr), {
+          ...prev,
+          bookmarked: next,
+        });
+      }
+      return { prev };
+    },
+    onError: (_err, _next, ctx) => {
+      if (ctx?.prev) qc.setQueryData(queryKeys.story(slugStr), ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.bookmarks() });
+    },
+  });
+
+  const story = query.data;
+  const liked = story?.liked ?? false;
+  const bookmarked = story?.bookmarked ?? false;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
@@ -42,41 +103,82 @@ export default function ReaderScreen() {
           <Text style={styles.dim}>{(query.error as Error).message}</Text>
         </View>
       ) : (
-        <ScrollView
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
-          <Text style={styles.eyebrow}>
-            {query.data.author.handle} · {query.data.minutes} min ·{" "}
-            {query.data.genre}
-          </Text>
-          <Text style={styles.title}>{query.data.title}</Text>
-          {query.data.synopsis ? (
-            <Text style={styles.synopsis}>{query.data.synopsis}</Text>
-          ) : null}
-
-          <View style={styles.divider} />
-
-          {query.data.body.map((para, i) => (
-            <Text key={i} style={styles.paragraph}>
-              {para}
+        <>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.eyebrow}>
+              {story!.author.handle} · {story!.minutes} min · {story!.genre}
             </Text>
-          ))}
+            <Text style={styles.title}>{story!.title}</Text>
+            {story!.synopsis ? (
+              <Text style={styles.synopsis}>{story!.synopsis}</Text>
+            ) : null}
 
-          {query.data.tags.length > 0 ? (
-            <View style={styles.tagRow}>
-              {query.data.tags.map((tag) => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          ) : null}
+            <View style={styles.divider} />
 
-          <Text style={styles.footerByline}>
-            — {query.data.author.name}
-          </Text>
-        </ScrollView>
+            {story!.body.map((para, i) => (
+              <Text key={i} style={styles.paragraph}>
+                {para}
+              </Text>
+            ))}
+
+            {story!.tags.length > 0 ? (
+              <View style={styles.tagRow}>
+                {story!.tags.map((tag) => (
+                  <View key={tag} style={styles.tag}>
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            <Text style={styles.footerByline}>— {story!.author.name}</Text>
+          </ScrollView>
+
+          <View style={styles.toolbar}>
+            <Pressable
+              onPress={() => likeMutation.mutate(!liked)}
+              style={({ pressed }) => [
+                styles.toolButton,
+                pressed && styles.toolPressed,
+              ]}
+              hitSlop={6}
+            >
+              <Text
+                style={[
+                  styles.toolGlyph,
+                  liked && { color: colors.accent },
+                ]}
+              >
+                {liked ? "♥" : "♡"}
+              </Text>
+              <Text style={styles.toolCount}>{story!.likes}</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => bookmarkMutation.mutate(!bookmarked)}
+              style={({ pressed }) => [
+                styles.toolButton,
+                pressed && styles.toolPressed,
+              ]}
+              hitSlop={6}
+            >
+              <Text
+                style={[
+                  styles.toolGlyph,
+                  bookmarked && { color: colors.accent },
+                ]}
+              >
+                {bookmarked ? "■" : "□"}
+              </Text>
+              <Text style={styles.toolLabel}>
+                {bookmarked ? "Saved" : "Save"}
+              </Text>
+            </Pressable>
+          </View>
+        </>
       )}
     </SafeAreaView>
   );
@@ -142,4 +244,29 @@ const styles = StyleSheet.create({
   },
   bodyText: { ...typography.body, color: colors.body },
   dim: { ...typography.small, color: colors.dim, textAlign: "center" },
+
+  toolbar: {
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.xl,
+  },
+  toolButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  toolPressed: { opacity: 0.6 },
+  toolGlyph: {
+    fontSize: 22,
+    color: colors.body,
+    lineHeight: 24,
+  },
+  toolCount: { ...typography.label, color: colors.body },
+  toolLabel: { ...typography.label, color: colors.body },
 });
