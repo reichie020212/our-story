@@ -44,7 +44,13 @@ export function useAuth(): AuthContextValue {
   return ctx;
 }
 
-type ApiError = { error: { code: string; message: string } };
+type ApiError = {
+  error: {
+    code: string;
+    message: string;
+    issues?: { path: string; message: string }[];
+  };
+};
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -55,9 +61,25 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   });
   if (!res.ok) {
     const data = (await res.json().catch(() => null)) as ApiError | null;
-    throw new Error(data?.error?.message ?? `Request failed (${res.status}).`);
+    // When the server sends a validation_error envelope with issues,
+    // surface the first one — "Password must contain at least 8
+    // characters" is far more useful than "Invalid request body."
+    const first = data?.error?.issues?.[0];
+    const detail = first
+      ? `${humanField(first.path)}: ${first.message}`
+      : null;
+    throw new Error(
+      detail ?? data?.error?.message ?? `Request failed (${res.status}).`,
+    );
   }
   return (await res.json()) as T;
+}
+
+function humanField(path: string): string {
+  if (path === "name") return "Display name";
+  if (path === "email") return "Email";
+  if (path === "password") return "Password";
+  return path || "Field";
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -180,8 +202,8 @@ function AuthModal() {
     e.preventDefault();
     if (submitting) return;
     if (!email.includes("@")) return setError("Please enter a valid email.");
-    if (password.length < 6)
-      return setError("Password must be at least 6 characters.");
+    if (password.length < 8)
+      return setError("Password must be at least 8 characters.");
     if (mode === "signup" && !name.trim())
       return setError("What should we call you?");
     setError("");
@@ -280,7 +302,7 @@ function AuthModal() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={
-                  mode === "signup" ? "at least 6 characters" : "••••••••"
+                  mode === "signup" ? "at least 8 characters" : "••••••••"
                 }
                 disabled={submitting}
               />
