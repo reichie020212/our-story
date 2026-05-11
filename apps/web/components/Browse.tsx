@@ -133,6 +133,7 @@ type FiltersProps = {
   setActiveTag: (tag: string | null) => void;
   count: number | null;
   loading: boolean;
+  searchTerm: string;
 };
 
 function Filters({
@@ -146,14 +147,48 @@ function Filters({
   setActiveTag,
   count,
   loading,
+  searchTerm,
 }: FiltersProps) {
   return (
     <div className="filter-bar">
       <div className="filter-title">
-        <h2>Browse the library</h2>
-        <span className="count">
+        <h2>
+          {searchTerm ? (
+            <>
+              Searching for{" "}
+              <em style={{ color: "var(--accent)" }}>
+                &ldquo;{searchTerm}&rdquo;
+              </em>
+            </>
+          ) : (
+            "Browse the library"
+          )}
+        </h2>
+        <span
+          className="count"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          {loading && (
+            <span
+              aria-hidden="true"
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: "var(--accent)",
+                animation: "pulse 1.2s infinite",
+                display: "inline-block",
+              }}
+            />
+          )}
           {loading
-            ? "loading…"
+            ? searchTerm
+              ? "searching…"
+              : "loading…"
             : `${count ?? 0} stories · updated today`}
         </span>
       </div>
@@ -440,6 +475,57 @@ function Sidebar({ onTag }: { onTag: (tag: string) => void }) {
   );
 }
 
+function EmptyState({
+  search,
+  hasFilters,
+  onClear,
+}: {
+  search: string;
+  hasFilters: boolean;
+  onClear: () => void;
+}) {
+  const headline = search
+    ? hasFilters
+      ? `No matches for "${search}" within these filters.`
+      : `No stories match "${search}" yet.`
+    : "No stories match those filters yet.";
+
+  return (
+    <div
+      style={{
+        gridColumn: "1/-1",
+        padding: "60px 20px",
+        textAlign: "center",
+        color: "var(--ink-mute)",
+        fontFamily: "var(--serif)",
+        fontStyle: "italic",
+        fontSize: 18,
+      }}
+    >
+      {headline}
+      {hasFilters && (
+        <>
+          {" "}
+          <button
+            type="button"
+            onClick={onClear}
+            style={{
+              color: "var(--accent)",
+              textDecoration: "underline",
+              fontStyle: "normal",
+              fontFamily: "var(--mono)",
+              fontSize: 13,
+              marginLeft: 4,
+            }}
+          >
+            Clear filters
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function useDebouncedValue<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -462,6 +548,21 @@ export function Browse() {
   const [loading, setLoading] = useState(true);
   const [featured, setFeatured] = useState<StoryWire | null>(null);
   const requestId = useRef(0);
+
+  // When the user kicks off a fresh search (empty → non-empty q), drop
+  // any narrowing filters they had set while browsing. Otherwise a
+  // genre/length/tag chip that happens to exclude the queried story
+  // silently hides matches — which reads as "search is broken" to the
+  // user even though the API works correctly.
+  const prevSearch = useRef(search);
+  useEffect(() => {
+    if (prevSearch.current === "" && search !== "") {
+      setGenre("all");
+      setLength("all");
+      setActiveTag(null);
+    }
+    prevSearch.current = search;
+  }, [search]);
 
   // Featured runs once on mount.
   useEffect(() => {
@@ -530,9 +631,16 @@ export function Browse() {
         setActiveTag={setActiveTag}
         count={stories?.length ?? null}
         loading={loading}
+        searchTerm={search}
       />
       <div className="grid-wrap" data-screen-label="02 Library">
-        <div className="story-grid">
+        <div
+          className="story-grid"
+          style={{
+            opacity: loading && stories !== null ? 0.55 : 1,
+            transition: "opacity 0.15s ease",
+          }}
+        >
           {stories === null && (
             <div
               style={{
@@ -566,19 +674,17 @@ export function Browse() {
             ),
           )}
           {stories !== null && stories.length === 0 && (
-            <div
-              style={{
-                gridColumn: "1/-1",
-                padding: "60px 20px",
-                textAlign: "center",
-                color: "var(--ink-mute)",
-                fontFamily: "var(--serif)",
-                fontStyle: "italic",
-                fontSize: 18,
+            <EmptyState
+              search={search}
+              hasFilters={
+                genre !== "all" || length !== "all" || activeTag !== null
+              }
+              onClear={() => {
+                setGenre("all");
+                setLength("all");
+                setActiveTag(null);
               }}
-            >
-              No stories match those filters yet. Try clearing one.
-            </div>
+            />
           )}
         </div>
         <Sidebar onTag={onTag} />
