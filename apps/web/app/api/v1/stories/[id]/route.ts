@@ -9,55 +9,12 @@ import {
   requireUser,
 } from "@/lib/auth-guard";
 import { enforce, getLimiter } from "@/lib/ratelimit";
-import {
-  clientIp,
-  rateLimitKey,
-  userAgent,
-  viewDedupHash,
-} from "@/lib/request";
 import { minutesFromBody, serializeStory } from "@/lib/story";
+import { recordViewIfEligible } from "@/lib/views";
 
 export const runtime = "nodejs";
 
-const viewLimiter = () => getLimiter("view", 30, "1 m");
 const writeLimiter = () => getLimiter("write", 10, "1 m");
-
-/** Insert a View row keyed by `hash(ip + ua + day_bucket)` — the unique
- *  constraint on (storyId, sessionHash) gives us a 24h dedup for free.
- *  Increments Story.viewCount only when a fresh row was inserted, so the
- *  counter doesn't double-count the same reader. */
-/** Returns true if this request actually recorded a fresh view, false
- *  if the (story, ip+ua, day_bucket) tuple was already counted in the
- *  last 24h. Callers can use the boolean to bump the response's
- *  viewCount locally so the same request that records a view also
- *  reflects it in the response (rather than showing stale n-1). */
-async function recordView(storyId: string): Promise<boolean> {
-  const [ip, ua] = await Promise.all([clientIp(), userAgent()]);
-  const sessionHash = viewDedupHash(ip, ua);
-  try {
-    await db.$transaction([
-      db.view.create({ data: { storyId, sessionHash } }),
-      db.story.update({
-        where: { id: storyId },
-        data: { viewCount: { increment: 1 } },
-      }),
-    ]);
-    return true;
-  } catch (err) {
-    // P2002 = unique violation = already counted in this 24h bucket.
-    // Anything else surfaces — viewCount staying off by one is fine,
-    // crashing the read isn't.
-    if (
-      typeof err === "object" &&
-      err !== null &&
-      "code" in err &&
-      (err as { code: unknown }).code === "P2002"
-    ) {
-      return false;
-    }
-    throw err;
-  }
-}
 
 /** Look up by slug OR id so /api/v1/stories/my-first-home and the
  *  /api/v1/stories/<cuid> form both work. Drafts are visible only to
@@ -86,22 +43,17 @@ export async function GET(
     const story = await loadStoryReadable(id, user?.id ?? null);
     if (!story) throw new NotFoundError("Story not found.");
 
-    // View counting only for published stories, only when the request
-    // makes it past the per-session view limiter. Owners reading their
-    // own work or readers blocked by the limiter still get the story
-    // back — the counter just doesn't move.
-    //
-    // When we DO record a fresh view, locally bump the in-memory
-    // story.viewCount so the response reflects the increment we just
-    // made (otherwise the caller sees the pre-increment value and
-    // would only see the new count on a subsequent fetch).
-    if (story.status === "published" && story.authorId !== user?.id) {
-      const blocked = await enforce(viewLimiter(), await rateLimitKey());
-      if (!blocked) {
-        const recorded = await recordView(story.id);
-        if (recorded) story.viewCount += 1;
-      }
-    }
+    // Eligibility (published, not the author, not rate-limited) lives
+    // in recordViewIfEligible. Bump in-memory so the response reflects
+    // the increment we just made — without this the caller sees n-1
+    // until they fetch again.
+    const recorded = await recordViewIfEligible({
+      storyId: story.id,
+      authorId: story.authorId,
+      status: story.status,
+      viewerId: user?.id ?? null,
+    });
+    if (recorded) story.viewCount += 1;
 
     // Per-viewer state — only populated when there's a session, so
     // anonymous callers don't get personalized fields.

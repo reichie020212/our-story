@@ -3,12 +3,23 @@ import { Reader } from "@/components/Reader";
 import { db } from "@/lib/db";
 import { getCurrentSession } from "@/lib/session";
 import { serializeStory, type StoryWire } from "@/lib/story";
+import { recordViewIfEligible } from "@/lib/views";
 
 // Force per-request rendering — story content + per-viewer state both
 // come from the DB and shouldn't be cached across users.
 export const dynamic = "force-dynamic";
 
-async function loadStory(idOrSlug: string, viewerId: string | null) {
+type LoadedStory = {
+  wire: StoryWire;
+  id: string;
+  status: string;
+  authorId: string;
+};
+
+async function loadStory(
+  idOrSlug: string,
+  viewerId: string | null,
+): Promise<LoadedStory | null> {
   const story = await db.story.findFirst({
     where: {
       OR: [{ id: idOrSlug }, { slug: idOrSlug }],
@@ -34,7 +45,12 @@ async function loadStory(idOrSlug: string, viewerId: string | null) {
     ]);
     viewerState = { liked: !!like, bookmarked: !!bookmark };
   }
-  return serializeStory(story, story.author, viewerState);
+  return {
+    wire: serializeStory(story, story.author, viewerState),
+    id: story.id,
+    status: story.status,
+    authorId: story.authorId,
+  };
 }
 
 export async function generateMetadata({
@@ -43,11 +59,11 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const story = await loadStory(slug, null);
-  if (!story) return { title: "Story not found · OurStory" };
+  const loaded = await loadStory(slug, null);
+  if (!loaded) return { title: "Story not found · OurStory" };
   return {
-    title: `${story.title} · OurStory`,
-    description: story.synopsis,
+    title: `${loaded.wire.title} · OurStory`,
+    description: loaded.wire.synopsis,
   };
 }
 
@@ -58,7 +74,21 @@ export default async function StoryPage({
 }) {
   const { slug } = await params;
   const { user } = await getCurrentSession();
-  const story: StoryWire | null = await loadStory(slug, user?.id ?? null);
-  if (!story) notFound();
+  const loaded = await loadStory(slug, user?.id ?? null);
+  if (!loaded) notFound();
+
+  // Record the view (server-side dedup by ip+ua+day). When it fires,
+  // bump the in-memory view count so the same render reflects it
+  // rather than showing the stale pre-increment value.
+  const recorded = await recordViewIfEligible({
+    storyId: loaded.id,
+    authorId: loaded.authorId,
+    status: loaded.status,
+    viewerId: user?.id ?? null,
+  });
+  const story: StoryWire = recorded
+    ? { ...loaded.wire, views: loaded.wire.views + 1 }
+    : loaded.wire;
+
   return <Reader story={story} signedIn={!!user} />;
 }
