@@ -1,11 +1,18 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "./AuthProvider";
 
 export function UserMenu() {
+  const router = useRouter();
   const { user, signOut, setModal } = useAuth();
   const [open, setOpen] = useState(false);
+
+  const go = (href: string) => {
+    setOpen(false);
+    router.push(href);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -64,10 +71,10 @@ export function UserMenu() {
             </div>
           </div>
           <div className="um-list">
-            <button>My stories</button>
-            <button>Drafts</button>
-            <button>Bookmarks</button>
-            <button>Settings</button>
+            <button onClick={() => go("/me/stories")}>My stories</button>
+            <button onClick={() => go("/me/drafts")}>Drafts</button>
+            <button onClick={() => go("/me/bookmarks")}>Bookmarks</button>
+            <button onClick={() => go("/settings")}>Settings</button>
           </div>
           <div className="um-sep"></div>
           <button
