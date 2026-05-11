@@ -34,6 +34,7 @@ type AuthContextValue = {
   modal: AuthModalState;
   setModal: (state: AuthModalState) => void;
   requireAuth: (action?: AuthReason) => boolean;
+  applyUser: (user: User) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -154,6 +155,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
+  const applyUser = useCallback((next: User) => {
+    setUser(next);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -164,8 +169,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       modal,
       setModal,
       requireAuth,
+      applyUser,
     }),
-    [user, loading, signIn, signUp, signOut, modal, requireAuth],
+    [user, loading, signIn, signUp, signOut, modal, requireAuth, applyUser],
   );
 
   return (
