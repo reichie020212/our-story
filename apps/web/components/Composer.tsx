@@ -49,8 +49,8 @@ export function Composer() {
     tags,
   });
 
-  const saveDraft = async () => {
-    if (!title.trim() && !body.trim()) return;
+  const saveDraft = async (): Promise<{ id: string; slug: string } | null> => {
+    if (!title.trim() && !body.trim()) return null;
     setStatus("saving");
     setError("");
     try {
@@ -61,16 +61,18 @@ export function Composer() {
           buildPayload(),
         );
         setStorySlug(data.story.slug);
-      } else {
-        const data = await apiSend<{ story: StoryWire }>(
-          "/api/v1/stories",
-          "POST",
-          buildPayload(),
-        );
-        setStoryId(data.story.id);
-        setStorySlug(data.story.slug);
+        setStatus("saved");
+        return { id: storyId, slug: data.story.slug };
       }
+      const data = await apiSend<{ story: StoryWire }>(
+        "/api/v1/stories",
+        "POST",
+        buildPayload(),
+      );
+      setStoryId(data.story.id);
+      setStorySlug(data.story.slug);
       setStatus("saved");
+      return { id: data.story.id, slug: data.story.slug };
     } catch (err) {
       setStatus("draft");
       setError(
@@ -78,25 +80,22 @@ export function Composer() {
           ? err.message
           : "Couldn't save. Please try again.",
       );
+      return null;
     }
   };
 
   const publish = async () => {
     setError("");
-    // Make sure the latest body is on the server before flipping to published.
-    if (
-      !storyId ||
-      status === "saving" ||
-      status === "draft" ||
-      status === "published"
-    ) {
-      await saveDraft();
-    }
-    if (!storyId) return; // saveDraft would have set an error
+    // Always save first so the latest body is on the server. saveDraft
+    // returns the saved id directly — we can't rely on the storyId state
+    // because the closure here was captured at render time and won't
+    // see setStoryId's effect inside the same call.
+    const saved = await saveDraft();
+    if (!saved) return;
     setStatus("publishing");
     try {
       const data = await apiSend<{ story: StoryWire }>(
-        `/api/v1/stories/${storyId}/publish`,
+        `/api/v1/stories/${saved.id}/publish`,
         "POST",
       );
       setStatus("published");
