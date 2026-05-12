@@ -5,7 +5,15 @@
  *
  * Cookie jar is a Map<name, value>; good enough for the single
  * os-session cookie this app uses. Bearer wrapper is even simpler.
+ *
+ * DB helpers (markEmailVerified et al.) talk to the same Neon database
+ * the dev server is using — they're an escape hatch for tests that
+ * don't want to walk through the email-verification ceremony for every
+ * signup.
  */
+import { db } from "@/lib/db";
+import { issueVerificationToken } from "@/lib/verification";
+
 const BASE_URL = process.env.TEST_BASE_URL ?? "http://localhost:3000";
 
 /** Probe the dev server. Throws a clear error if it's not running. */
@@ -94,4 +102,52 @@ export async function api<T = unknown>(
 /** Generate a per-test-run email so re-runs don't 409 on duplicates. */
 export function uniqueEmail(prefix: string): string {
   return `${prefix}+${Date.now()}.${Math.floor(Math.random() * 1e6)}@ourstory.test`;
+}
+
+/** Mark a user verified directly. Use when the test is exercising a
+ *  downstream flow (signin, password change, story creation) and the
+ *  pre-verification gate isn't what's being tested. */
+export async function markEmailVerified(email: string): Promise<void> {
+  await db.user.update({
+    where: { email },
+    data: { emailVerifiedAt: new Date() },
+  });
+}
+
+/** Mint a fresh verification token for the email and return the *raw*
+ *  token. Useful for testing the verify-email endpoint without an
+ *  email service. Replaces any prior unconsumed token for that user. */
+export async function issueRawVerificationToken(email: string): Promise<{
+  token: string;
+  expiresAt: Date;
+  userId: string;
+}> {
+  const user = await db.user.findUniqueOrThrow({
+    where: { email },
+    select: { id: true },
+  });
+  const { token, expiresAt } = await issueVerificationToken(user.id);
+  return { token, expiresAt, userId: user.id };
+}
+
+/** Backdate every pending token for a user so the verify endpoint
+ *  treats them as expired. Used to test the expired-link branch. */
+export async function expireVerificationTokens(email: string): Promise<void> {
+  const user = await db.user.findUniqueOrThrow({
+    where: { email },
+    select: { id: true },
+  });
+  await db.emailVerificationToken.updateMany({
+    where: { userId: user.id, consumedAt: null },
+    data: { expiresAt: new Date(Date.now() - 60_000) },
+  });
+}
+
+/** Whether a user has been email-verified yet. */
+export async function isEmailVerified(email: string): Promise<boolean> {
+  const u = await db.user.findUnique({
+    where: { email },
+    select: { emailVerifiedAt: true },
+  });
+  return !!u?.emailVerifiedAt;
 }

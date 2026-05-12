@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import {
@@ -6,9 +7,10 @@ import {
   uniqueHandle,
 } from "@/lib/auth";
 import { error, json, zodError } from "@/lib/api";
+import { buildSiteUrl, sendVerificationEmail } from "@/lib/email";
 import { enforce, getLimiter } from "@/lib/ratelimit";
 import { clientIp } from "@/lib/request";
-import { startSession } from "@/lib/session";
+import { issueVerificationToken } from "@/lib/verification";
 
 export const runtime = "nodejs";
 
@@ -62,6 +64,16 @@ export async function POST(req: Request) {
     },
   });
 
-  await startSession(user.id);
-  return json({ user }, { status: 201 });
+  // Mint the verification token + send the email. We don't start a
+  // session — sign-in is gated behind the click, so the client should
+  // land on a "check your email" screen.
+  const { token } = await issueVerificationToken(user.id);
+  const host = (await headers()).get("host");
+  const link = buildSiteUrl(
+    `/verify-email?token=${encodeURIComponent(token)}`,
+    host,
+  );
+  await sendVerificationEmail({ to: user.email, name: user.name, link });
+
+  return json({ user, verificationRequired: true as const }, { status: 201 });
 }

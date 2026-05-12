@@ -189,16 +189,18 @@ export default function SettingsPage() {
           </div>
         </form>
 
+        <PasswordSection />
+
         <p
           style={{
             color: "var(--ink-mute)",
             fontSize: 13,
             fontStyle: "italic",
             fontFamily: "var(--serif)",
-            margin: "0 0 24px",
+            margin: "16px 0 24px",
           }}
         >
-          Email and password updates are coming soon.
+          Email updates are coming soon.
         </p>
 
         <button
@@ -210,6 +212,210 @@ export default function SettingsPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+function PasswordSection() {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [status, setStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [err, setErr] = useState<string | null>(null);
+
+  const matches = next.length === 0 || next === confirm;
+  const minOk = next.length === 0 || next.length >= 8;
+  const submittable =
+    current.length > 0 &&
+    next.length >= 8 &&
+    next === confirm &&
+    status !== "saving";
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!submittable) return;
+    setErr(null);
+    setStatus("saving");
+    try {
+      await apiSend<{ ok: true }>("/api/v1/me/password", "PATCH", {
+        currentPassword: current,
+        newPassword: next,
+      });
+      setStatus("saved");
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      setTimeout(() => setStatus("idle"), 2500);
+    } catch (e) {
+      setStatus("idle");
+      setErr(
+        e instanceof ApiCallError
+          ? e.message
+          : "Couldn't update your password. Try again.",
+      );
+    }
+  };
+
+  return (
+    <form
+      onSubmit={submit}
+      className="panel"
+      style={{
+        background: "var(--bg-elev)",
+        border: "1px solid var(--rule)",
+        borderRadius: "var(--radius-lg)",
+        padding: 24,
+        marginBottom: 16,
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+      }}
+    >
+      <span
+        style={{
+          color: "var(--ink-mute)",
+          fontFamily: "var(--mono)",
+          fontSize: 12,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+        }}
+      >
+        Password
+      </span>
+      <PasswordField
+        label="Current password"
+        value={current}
+        onChange={setCurrent}
+        disabled={status === "saving"}
+        autoComplete="current-password"
+      />
+      <PasswordField
+        label="New password"
+        value={next}
+        onChange={setNext}
+        disabled={status === "saving"}
+        autoComplete="new-password"
+        hint={
+          next.length > 0 && !minOk
+            ? "Must be at least 8 characters."
+            : "8 characters or more."
+        }
+        invalid={next.length > 0 && !minOk}
+      />
+      <PasswordField
+        label="Confirm new password"
+        value={confirm}
+        onChange={setConfirm}
+        disabled={status === "saving"}
+        autoComplete="new-password"
+        hint={!matches ? "Doesn't match the new password." : undefined}
+        invalid={!matches}
+      />
+      {err && (
+        <div
+          style={{
+            color: "#b3261e",
+            fontSize: 13,
+            fontFamily: "var(--mono)",
+          }}
+        >
+          {err}
+        </div>
+      )}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginTop: 4,
+        }}
+      >
+        <button
+          type="submit"
+          className="btn"
+          disabled={!submittable}
+          style={
+            !submittable ? { opacity: 0.5, cursor: "not-allowed" } : undefined
+          }
+        >
+          {status === "saving" ? "Updating…" : "Update password"}
+        </button>
+        {status === "saved" && (
+          <span
+            style={{
+              color: "var(--accent)",
+              fontFamily: "var(--mono)",
+              fontSize: 12,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+            }}
+          >
+            ✓ Updated. Other devices have been signed out.
+          </span>
+        )}
+      </div>
+    </form>
+  );
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  disabled,
+  hint,
+  invalid,
+  autoComplete,
+}: {
+  label: string;
+  value: string;
+  onChange: (next: string) => void;
+  disabled?: boolean;
+  hint?: string;
+  invalid?: boolean;
+  autoComplete?: string;
+}) {
+  return (
+    <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span
+        style={{
+          color: "var(--ink-mute)",
+          fontFamily: "var(--mono)",
+          fontSize: 12,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </span>
+      <input
+        type="password"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        autoComplete={autoComplete}
+        style={{
+          padding: "10px 12px",
+          border: `1px solid ${invalid ? "#b3261e" : "var(--rule)"}`,
+          borderRadius: 8,
+          fontFamily: "var(--serif)",
+          fontSize: 16,
+          background: "var(--bg)",
+          color: "var(--ink)",
+        }}
+      />
+      {hint && (
+        <span
+          style={{
+            color: invalid ? "#b3261e" : "var(--ink-mute)",
+            fontSize: 12,
+            fontStyle: invalid ? "normal" : "italic",
+            fontFamily: invalid ? "var(--mono)" : "var(--serif)",
+          }}
+        >
+          {hint}
+        </span>
+      )}
+    </label>
   );
 }
 

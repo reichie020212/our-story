@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import {
@@ -6,13 +7,10 @@ import {
   uniqueHandle,
 } from "@/lib/auth";
 import { error, json, zodError } from "@/lib/api";
-import {
-  issueRefreshToken,
-  signAccessToken,
-  MobileAuthNotConfiguredError,
-} from "@/lib/jwt";
+import { buildSiteUrl, sendVerificationEmail } from "@/lib/email";
 import { enforce, getLimiter } from "@/lib/ratelimit";
 import { clientIp } from "@/lib/request";
+import { issueVerificationToken } from "@/lib/verification";
 
 export const runtime = "nodejs";
 
@@ -24,11 +22,10 @@ const Body = z.object({
   name: z.string().trim().min(1).max(80),
 });
 
-// Mobile-only signup. Mirrors the web /auth/signup but issues an
-// RS256 access + opaque refresh pair instead of starting a cookie
-// session — mobile clients ignore cookies, so the previous "create
-// user via /auth/signup then call /auth/mobile/login" dance left
-// an orphan Session row per signup.
+// Mobile signup mirrors the web /auth/signup. We don't mint mobile
+// tokens here — verification is the gate, so the client should land on
+// a "check your email" screen. Once verified, the user signs in via
+// /auth/mobile/login to get the access+refresh pair.
 export async function POST(req: Request) {
   const blocked = await enforce(limiter(), `ip:${await clientIp()}`);
   if (blocked) return blocked;
@@ -71,25 +68,13 @@ export async function POST(req: Request) {
     },
   });
 
-  try {
-    const [access, refresh] = await Promise.all([
-      signAccessToken(user.id),
-      issueRefreshToken(user.id),
-    ]);
-    return json(
-      {
-        user,
-        accessToken: access.token,
-        accessTokenExpiresAt: access.expiresAt.toISOString(),
-        refreshToken: refresh.token,
-        refreshTokenExpiresAt: refresh.expiresAt.toISOString(),
-      },
-      { status: 201 },
-    );
-  } catch (err) {
-    if (err instanceof MobileAuthNotConfiguredError) {
-      return error(503, "mobile_auth_not_configured", err.message);
-    }
-    throw err;
-  }
+  const { token } = await issueVerificationToken(user.id);
+  const host = (await headers()).get("host");
+  const link = buildSiteUrl(
+    `/verify-email?token=${encodeURIComponent(token)}`,
+    host,
+  );
+  await sendVerificationEmail({ to: user.email, name: user.name, link });
+
+  return json({ user, verificationRequired: true as const }, { status: 201 });
 }

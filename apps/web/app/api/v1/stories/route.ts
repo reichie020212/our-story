@@ -62,10 +62,21 @@ async function listBySearch(args: {
   const offset = cursor ? Math.max(0, parseInt(cursor, 10) || 0) : 0;
   const likeQ = `%${q}%`;
 
+  // `websearch_to_tsquery` is lexeme-based and won't match single-letter
+  // / partial-word inputs (e.g. "F" against the title "Fix 5"). Pair it
+  // with ILIKE branches on title/synopsis/tags so prefix-style typing
+  // still finds the obvious matches — FTS handles relevance ranking, the
+  // ILIKE branches catch what the tokenizer drops.
   const filters: Prisma.Sql[] = [
     Prisma.sql`s.status = 'published'::"StoryStatus"`,
     Prisma.sql`s.deleted_at IS NULL`,
-    Prisma.sql`(s.search_vector @@ websearch_to_tsquery('english'::regconfig, ${q}) OR u.name ILIKE ${likeQ})`,
+    Prisma.sql`(
+      s.search_vector @@ websearch_to_tsquery('english'::regconfig, ${q})
+      OR s.title ILIKE ${likeQ}
+      OR s.synopsis ILIKE ${likeQ}
+      OR EXISTS (SELECT 1 FROM unnest(s.tags) t WHERE t ILIKE ${likeQ})
+      OR u.name ILIKE ${likeQ}
+    )`,
   ];
   if (genre) filters.push(Prisma.sql`s.genre = ${genre}::"Genre"`);
   if (length) filters.push(Prisma.sql`s.length = ${length}::"StoryLength"`);

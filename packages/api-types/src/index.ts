@@ -129,6 +129,16 @@ export const MobileAuthResponseSchema = z.object({
 });
 export type MobileAuthResponse = z.infer<typeof MobileAuthResponseSchema>;
 
+/** POST /auth/signup and POST /auth/mobile/signup both return this shape
+ *  instead of an active session/token pair. The client should show a
+ *  "check your email" state; sign-in only succeeds once the link in
+ *  that email has been clicked. */
+export const SignupResponseSchema = z.object({
+  user: PublicUserSchema,
+  verificationRequired: z.literal(true),
+});
+export type SignupResponse = z.infer<typeof SignupResponseSchema>;
+
 // ---------- Story list / single ----------
 
 /** Cursor is opaque — a story id when no `q`, an offset string when `q`

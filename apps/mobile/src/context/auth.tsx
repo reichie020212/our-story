@@ -18,6 +18,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   MobileAuthResponseSchema,
+  SignupResponseSchema,
   type MobileAuthResponse,
   type PublicUser,
 } from "@our-story/api-types";
@@ -33,11 +34,23 @@ type AuthState =
   | { status: "signed-out" }
   | { status: "signed-in"; user: PublicUser };
 
+// signUp doesn't sign the user in anymore — the server gates that
+// behind a clicked verification link. We surface that to the caller so
+// the signup screen can navigate to the "check your email" view.
+export type SignUpResult =
+  | { kind: "verification_sent"; email: string }
+  | { kind: "signed_in"; user: PublicUser };
+
 type AuthContextValue = {
   state: AuthState;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    name: string,
+  ) => Promise<SignUpResult>;
   signOut: () => Promise<void>;
+  resendVerification: (email: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -154,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const parsed = MobileAuthResponseSchema.parse(body);
         await applyAuth(parsed);
       },
-      signUp: async (email, password, name) => {
+      signUp: async (email, password, name): Promise<SignUpResult> => {
         const body = await apiFetchAnonymous<unknown>(
           "/api/v1/auth/mobile/signup",
           {
@@ -162,8 +175,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             body: JSON.stringify({ email, password, name }),
           },
         );
-        const parsed = MobileAuthResponseSchema.parse(body);
-        await applyAuth(parsed);
+        // New contract: signup returns `verificationRequired`. Keep a
+        // soft fallback for the legacy token-pair shape so a stale
+        // server during rollout doesn't brick the client.
+        const verification = SignupResponseSchema.safeParse(body);
+        if (verification.success) {
+          return {
+            kind: "verification_sent",
+            email: verification.data.user.email,
+          };
+        }
+        const tokens = MobileAuthResponseSchema.parse(body);
+        await applyAuth(tokens);
+        return { kind: "signed_in", user: tokens.user };
+      },
+      resendVerification: async (email) => {
+        await apiFetchAnonymous("/api/v1/auth/resend-verification", {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        });
       },
       signOut: async () => {
         const stored = await loadRefreshToken();

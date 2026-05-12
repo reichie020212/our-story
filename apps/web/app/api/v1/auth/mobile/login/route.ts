@@ -41,6 +41,15 @@ export async function POST(req: Request) {
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) return INVALID();
 
+  if (!user.emailVerifiedAt) {
+    return error(
+      403,
+      "email_not_verified",
+      "Please verify your email before signing in. Check your inbox for the link, or request a new one.",
+      { email: user.email },
+    );
+  }
+
   try {
     const [access, refresh] = await Promise.all([
       signAccessToken(user.id),

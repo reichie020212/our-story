@@ -27,8 +27,19 @@ export default function SignUpScreen() {
     setError(null);
     setSubmitting(true);
     try {
-      await signUp(email.trim().toLowerCase(), password, name.trim());
-      router.replace("/(tabs)/browse");
+      const normalizedEmail = email.trim().toLowerCase();
+      const result = await signUp(normalizedEmail, password, name.trim());
+      if (result.kind === "verification_sent") {
+        // Account created; user must click the link in the email
+        // before they can sign in. The check-email screen handles
+        // resends from there.
+        router.replace({
+          pathname: "/(auth)/check-email",
+          params: { email: result.email },
+        });
+      } else {
+        router.replace("/(tabs)/browse");
+      }
     } catch (err) {
       if (err instanceof ApiFetchError) {
         setError(err.message);

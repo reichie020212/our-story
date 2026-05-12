@@ -26,10 +26,20 @@ export default function SignInScreen() {
     setError(null);
     setSubmitting(true);
     try {
-      await signIn(email.trim().toLowerCase(), password);
+      const normalizedEmail = email.trim().toLowerCase();
+      await signIn(normalizedEmail, password);
       router.replace("/(tabs)/browse");
     } catch (err) {
       if (err instanceof ApiFetchError) {
+        if (err.code === "email_not_verified") {
+          // Punt to the check-email screen so the user can resend the
+          // link without typing their email a second time.
+          router.replace({
+            pathname: "/(auth)/check-email",
+            params: { email: email.trim().toLowerCase(), reason: "signin" },
+          });
+          return;
+        }
         setError(err.message);
       } else {
         setError("Couldn't sign in. Check your connection and try again.");

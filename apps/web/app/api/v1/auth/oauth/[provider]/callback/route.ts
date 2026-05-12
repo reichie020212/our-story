@@ -121,6 +121,10 @@ export async function GET(
           data: {
             oauthProvider: provider,
             oauthId: profile.id,
+            // Linking via a provider that confirmed the address proves
+            // email ownership — promote unverified accounts so the
+            // verification gate doesn't strand them.
+            ...(byEmail.emailVerifiedAt ? {} : { emailVerifiedAt: new Date() }),
           },
         });
       } else {
@@ -133,6 +137,9 @@ export async function GET(
             initial: initialFromName(profile.name),
             oauthProvider: provider,
             oauthId: profile.id,
+            // OAuth sign-up is pre-verified: the provider already
+            // proved control of the email, so no link required.
+            emailVerifiedAt: new Date(),
           },
         });
       }
