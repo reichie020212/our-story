@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
+import { AdSlot } from "@/components/AdSlot";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -269,7 +270,7 @@ export default function DownloadPage() {
         </div>
       </section>
 
-      <div className={styles.adSlot}>728 × 90 · Leaderboard</div>
+      <AdSlot className={styles.adSlot}>728 × 90 · Leaderboard</AdSlot>
 
       <section className={styles.features}>
         <h2>Built for reading everywhere.</h2>

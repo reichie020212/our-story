@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GENRES, LENGTHS } from "@/data/stories";
+import { AdSlot } from "@/components/AdSlot";
 import { apiGet } from "@/lib/client/api";
 import type { StoryWire } from "@/lib/story";
 
@@ -385,7 +386,7 @@ function Sidebar({ onTag }: { onTag: (tag: string) => void }) {
 
   return (
     <aside className="sidebar">
-      <div className="ad ad-sidebar">300 × 600 · Medium Rectangle</div>
+      <AdSlot className="ad ad-sidebar">300 × 600 · Medium Rectangle</AdSlot>
       <div className="panel">
         <h4>Trending this week</h4>
         <div className="trending">
@@ -619,7 +620,7 @@ export function Browse() {
   return (
     <>
       {featured ? <Hero story={featured} /> : <HeroSkeleton />}
-      <div className="ad ad-leaderboard">728 × 90 · Leaderboard</div>
+      <AdSlot className="ad ad-leaderboard">728 × 90 · Leaderboard</AdSlot>
       <Filters
         genre={genre}
         setGenre={setGenre}
@@ -664,13 +665,13 @@ export function Browse() {
                 onTag={onTag}
               />
             ) : (
-              <div
+              <AdSlot
                 key={item.id}
                 className="ad ad-inline"
                 style={{ gridColumn: "1 / -1" }}
               >
                 728 × 90 · In-Feed Ad Slot
-              </div>
+              </AdSlot>
             ),
           )}
           {stories !== null && stories.length === 0 && (
