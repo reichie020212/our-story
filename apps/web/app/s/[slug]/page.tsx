@@ -19,6 +19,7 @@ type LoadedStory = {
 async function loadStory(
   idOrSlug: string,
   viewerId: string | null,
+  viewerIsAdmin = false,
 ): Promise<LoadedStory | null> {
   const story = await db.story.findFirst({
     where: {
@@ -29,7 +30,9 @@ async function loadStory(
   });
   if (!story) return null;
   const isOwner = viewerId === story.authorId;
-  if (story.status !== "published" && !isOwner) return null;
+  // Non-published stories are visible to their author and to admins (so
+  // the review queue's "Open preview" works); everyone else gets a 404.
+  if (story.status !== "published" && !isOwner && !viewerIsAdmin) return null;
 
   let viewerState: { liked: boolean; bookmarked: boolean } | undefined;
   if (viewerId) {
@@ -74,7 +77,11 @@ export default async function StoryPage({
 }) {
   const { slug } = await params;
   const { user } = await getCurrentSession();
-  const loaded = await loadStory(slug, user?.id ?? null);
+  const loaded = await loadStory(
+    slug,
+    user?.id ?? null,
+    user?.role === "admin",
+  );
   if (!loaded) notFound();
 
   // Record the view (server-side dedup by ip+ua+day). When it fires,

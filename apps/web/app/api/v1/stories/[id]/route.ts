@@ -19,7 +19,11 @@ const writeLimiter = () => getLimiter("write", 10, "1 m");
 /** Look up by slug OR id so /api/v1/stories/my-first-home and the
  *  /api/v1/stories/<cuid> form both work. Drafts are visible only to
  *  the owner. */
-async function loadStoryReadable(idOrSlug: string, userId: string | null) {
+async function loadStoryReadable(
+  idOrSlug: string,
+  userId: string | null,
+  isAdmin = false,
+) {
   const story = await db.story.findFirst({
     where: {
       OR: [{ id: idOrSlug }, { slug: idOrSlug }],
@@ -29,7 +33,9 @@ async function loadStoryReadable(idOrSlug: string, userId: string | null) {
   });
   if (!story) return null;
   const isOwner = userId === story.authorId;
-  if (story.status !== "published" && !isOwner) return null;
+  // Drafts/pending/rejected are visible to their author and to admins
+  // (review queue preview); everyone else gets a not-found.
+  if (story.status !== "published" && !isOwner && !isAdmin) return null;
   return story;
 }
 
@@ -40,7 +46,11 @@ export async function GET(
   try {
     const { id } = await params;
     const user = await getAuthenticatedUser();
-    const story = await loadStoryReadable(id, user?.id ?? null);
+    const story = await loadStoryReadable(
+      id,
+      user?.id ?? null,
+      user?.role === "admin",
+    );
     if (!story) throw new NotFoundError("Story not found.");
 
     // Eligibility (published, not the author, not rate-limited) lives
