@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 import { GENRES } from "@/data/stories";
+import { AdSlot } from "@/components/AdSlot";
 import { useAuth } from "@/components/AuthProvider";
 import { apiSend } from "@/lib/client/api";
 import type { StoryWire } from "@/lib/story";
@@ -215,7 +216,7 @@ export function Reader({
             return (
               <Fragment key={i}>
                 <p>{text}</p>
-                <div className="ad ad-midstory">300 × 250 · Mid-Story Ad</div>
+                <AdSlot className="ad ad-midstory">300 × 250 · Mid-Story Ad</AdSlot>
               </Fragment>
             );
           }

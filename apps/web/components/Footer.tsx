@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { AdSlot } from "./AdSlot";
 
 export function Footer() {
   return (
     <>
-      <div className="ad ad-footer">728 × 90 · Footer Leaderboard</div>
+      <AdSlot className="ad ad-footer">728 × 90 · Footer Leaderboard</AdSlot>
       <footer className="footer">
         <div>
           <div className="brand">
