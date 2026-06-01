@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import { AdSlot } from "@/components/AdSlot";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
-  title: "Get the OurStory app",
+  title: "OurStory app — coming soon",
   description:
-    "OurStory Mobile brings every story in the library to your phone — offline reading, night-mode typography, and the same account you use on the web.",
+    "The OurStory mobile app is under construction. For now, the full library lives on the web.",
+  // Under construction — keep it out of search results until the app ships.
+  robots: { index: false, follow: true },
 };
 
 const genreVar = (color: string): CSSProperties =>
@@ -15,6 +18,38 @@ const genreVar = (color: string): CSSProperties =>
 export default function DownloadPage() {
   return (
     <main className={styles.wrap}>
+      <div className={styles.constructionOverlay}>
+        <div className={styles.constructionCard}>
+          <div className={styles.constructionIcon}>
+            <svg
+              width="30"
+              height="30"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+            </svg>
+          </div>
+          <div className={styles.constructionEyebrow}>
+            <span className={styles.pulse}></span>Coming soon
+          </div>
+          <h2>Mobile app under construction</h2>
+          <p>
+            We&apos;re still putting the finishing touches on OurStory for iOS
+            and Android. Check back soon — for now, the full library lives on
+            the web.
+          </p>
+          <Link href="/" className={styles.constructionBtn}>
+            Back to the library
+          </Link>
+        </div>
+      </div>
+
+      <div className={styles.dimmed} aria-hidden="true" inert>
       <section className={styles.hero}>
         <div>
           <div className={styles.eyebrow}>
@@ -59,27 +94,6 @@ export default function DownloadPage() {
                 <div className={styles.sm}>Get it on</div>
                 <div className={styles.lg}>Google Play</div>
               </div>
-            </a>
-          </div>
-          <div className={styles.apkRow}>
-            <div className={styles.apkIcon}>
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" />
-              </svg>
-            </div>
-            <div className={styles.apkContent}>
-              <h5>Direct APK download</h5>
-              <p>v1.0.0 · Android 8+ · 18.4 MB · signed</p>
-            </div>
-            <a href="#" className={styles.apkBtn}>
-              Download .apk
             </a>
           </div>
         </div>
@@ -373,14 +387,6 @@ export default function DownloadPage() {
           </p>
         </details>
         <details>
-          <summary>Can I sideload the APK without Google Play?</summary>
-          <p>
-            Yes. The direct APK download above is signed and identical to the
-            Play Store build. You&apos;ll need to enable “Install from unknown
-            sources” once in your Android settings.
-          </p>
-        </details>
-        <details>
           <summary>What&apos;s different between the app and the website?</summary>
           <p>
             The app adds offline reading, push notifications, and a lighter
@@ -389,6 +395,7 @@ export default function DownloadPage() {
           </p>
         </details>
       </section>
+      </div>
     </main>
   );
 }
