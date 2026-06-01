@@ -1,13 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GENRES, LENGTHS } from "@/data/stories";
 import { useAuth } from "./AuthProvider";
-import { apiSend, ApiCallError } from "@/lib/client/api";
+import { apiGet, apiSend, ApiCallError } from "@/lib/client/api";
+import type { AppSettingsResponse } from "@our-story/api-types";
 import type { StoryWire } from "@/lib/story";
 
-type Status = "draft" | "saving" | "saved" | "publishing" | "published";
+type Status =
+  | "draft"
+  | "saving"
+  | "saved"
+  | "publishing"
+  | "published"
+  | "submitted";
 type Format = { bold: boolean; italic: boolean; underline: boolean };
 
 export function Composer() {
@@ -25,11 +32,32 @@ export function Composer() {
   const [tagInput, setTagInput] = useState("");
   const [status, setStatus] = useState<Status>("draft");
   const [error, setError] = useState("");
+  const [approvalRequired, setApprovalRequired] = useState(false);
   const [activeFormat, setActiveFormat] = useState<Format>({
     bold: false,
     italic: false,
     underline: false,
   });
+
+  // When the global approval gate is on, a non-admin author "sends for
+  // approval" instead of publishing directly. Admins always publish directly.
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<AppSettingsResponse>("/api/v1/settings")
+      .then((data) => {
+        if (!cancelled) setApprovalRequired(data.settings.approvalRequired);
+      })
+      .catch(() => {
+        // Read-only convenience flag; if it fails, fall back to the
+        // direct-publish label and let the server be the source of truth.
+        if (!cancelled) setApprovalRequired(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const needsApproval = approvalRequired && user?.role !== "admin";
 
   const wordCount = body.trim().split(/\s+/).filter(Boolean).length;
   const readTime = Math.max(1, Math.round(wordCount / 220));
@@ -98,6 +126,13 @@ export function Composer() {
         `/api/v1/stories/${saved.id}/publish`,
         "POST",
       );
+      // Under the approval gate the same endpoint returns a pending story
+      // instead of a published one — stay on the page and confirm the
+      // submission rather than redirecting to a not-yet-public reader.
+      if (data.story.status === "pending_review") {
+        setStatus("submitted");
+        return;
+      }
       setStatus("published");
       router.push(`/s/${data.story.slug}`);
     } catch (err) {
@@ -167,17 +202,21 @@ export function Composer() {
             </span>
           )}
           <span
-            className={`status-pill ${status === "saved" || status === "published" ? "saved" : ""}`}
+            className={`status-pill ${status === "saved" || status === "published" || status === "submitted" ? "saved" : ""}`}
           >
             {status === "saving"
               ? "Saving…"
               : status === "saved"
                 ? "✓ Saved"
                 : status === "publishing"
-                  ? "Publishing…"
+                  ? needsApproval
+                    ? "Submitting…"
+                    : "Publishing…"
                   : status === "published"
                     ? "Published ✓"
-                    : "Draft"}
+                    : status === "submitted"
+                      ? "Submitted for review ✓"
+                      : "Draft"}
           </span>
           <button
             className="btn-ghost btn"
@@ -196,12 +235,32 @@ export function Composer() {
           <button
             className="btn"
             onClick={publish}
-            disabled={status === "saving" || status === "publishing"}
+            disabled={
+              status === "saving" ||
+              status === "publishing" ||
+              status === "submitted"
+            }
           >
-            {status === "published" ? "Published ✓" : "Publish"}
+            {status === "published"
+              ? "Published ✓"
+              : status === "submitted"
+                ? "Submitted ✓"
+                : needsApproval
+                  ? "Send for approval"
+                  : "Publish"}
           </button>
         </div>
       </div>
+      {status === "submitted" && (
+        <div
+          className="composer-review-note"
+          style={{ marginBottom: 16, maxWidth: 720 }}
+        >
+          Your story was sent for approval. It will appear under{" "}
+          <b>Drafts</b> as <b>“Pending review”</b> until an editor approves it —
+          you&apos;ll see the result there.
+        </div>
+      )}
       {error && (
         <div
           className="auth-error"

@@ -76,12 +76,19 @@ async function main() {
           handle: handleFromName(sample.author),
           initial: sample.authorInitial,
           passwordHash: isMara ? maraHash : null,
+          // Mara is the demo admin so the approval flow is testable out of
+          // the box; everyone else is a regular user. Mark her verified too
+          // so the demo login isn't blocked by the email-verification gate.
+          role: isMara ? "admin" : "user",
+          emailVerifiedAt: isMara ? new Date() : null,
         },
         update: {
           name: sample.author,
           handle: handleFromName(sample.author),
           initial: sample.authorInitial,
-          ...(isMara ? { passwordHash: maraHash } : {}),
+          ...(isMara
+            ? { passwordHash: maraHash, role: "admin", emailVerifiedAt: new Date() }
+            : {}),
         },
       });
       userIdByName.set(sample.author, user.id);
@@ -135,6 +142,15 @@ async function main() {
     await prisma.story.updateMany({
       where: { slug: { not: featured.id }, featured: true },
       data: { featured: false },
+    });
+
+    // Materialize the global settings singleton with the approval gate
+    // off (direct publish — the default). Idempotent: leaves an existing
+    // row's flag untouched on re-seed.
+    await prisma.appSetting.upsert({
+      where: { id: "global" },
+      create: { id: "global", approvalRequired: false },
+      update: {},
     });
 
     const userCount = await prisma.user.count();

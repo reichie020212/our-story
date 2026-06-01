@@ -168,6 +168,16 @@ function StoryCardSimple({ story }: { story: StoryWire }) {
         day: "numeric",
       })
     : "draft";
+  // Badge only the non-public states (these only surface in the Drafts
+  // view); published cards stay clean.
+  const statusBadge =
+    story.status === "pending_review"
+      ? { label: "Pending review", cls: "pending-review" }
+      : story.status === "rejected"
+        ? { label: "Rejected", cls: "rejected" }
+        : story.status === "draft"
+          ? { label: "Draft", cls: "" }
+          : null;
   return (
     <article
       className="story-card"
@@ -183,8 +193,21 @@ function StoryCardSimple({ story }: { story: StoryWire }) {
           {length.label} · {story.minutes} min
         </span>
       </div>
+      {statusBadge && (
+        <span
+          className={`status-pill ${statusBadge.cls}`}
+          style={{ alignSelf: "flex-start", marginBottom: 8 }}
+        >
+          {statusBadge.label}
+        </span>
+      )}
       <h3>{story.title || "Untitled draft"}</h3>
       <p className="excerpt">{story.synopsis || "No synopsis yet."}</p>
+      {story.status === "rejected" && story.rejectionReason && (
+        <p className="reject-reason">
+          <b>Editor&apos;s note:</b> {story.rejectionReason}
+        </p>
+      )}
       <div className="tags">
         {story.tags.slice(0, 3).map((t) => (
           <span key={t}>#{t}</span>

@@ -151,3 +151,21 @@ export async function isEmailVerified(email: string): Promise<boolean> {
   });
   return !!u?.emailVerifiedAt;
 }
+
+/** Promote/demote a user directly. Lets the approval-flow tests mint an
+ *  admin without a user-management UI round-trip. */
+export async function setUserRole(
+  email: string,
+  role: "user" | "admin",
+): Promise<void> {
+  await db.user.update({ where: { email }, data: { role } });
+}
+
+/** Flip the global approval gate directly (test setup/teardown). */
+export async function setApprovalRequired(value: boolean): Promise<void> {
+  await db.appSetting.upsert({
+    where: { id: "global" },
+    create: { id: "global", approvalRequired: value },
+    update: { approvalRequired: value },
+  });
+}

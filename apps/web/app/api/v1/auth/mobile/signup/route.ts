@@ -65,6 +65,7 @@ export async function POST(req: Request) {
       name: true,
       handle: true,
       initial: true,
+      role: true,
     },
   });
 

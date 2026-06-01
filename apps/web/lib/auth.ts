@@ -58,6 +58,7 @@ function publicUser(user: User): PublicUser {
     name: user.name,
     handle: user.handle,
     initial: user.initial,
+    role: user.role,
   };
 }
 

@@ -52,6 +52,7 @@ export async function POST(req: Request) {
       name: true,
       handle: true,
       initial: true,
+      role: true,
     },
   });
   if (!user) return error(404, "user_missing", "User account was not found.");

@@ -16,6 +16,7 @@ export type User = {
   name: string;
   initial: string;
   handle: string;
+  role: "user" | "admin";
 };
 
 export type AuthReason = "write" | null;

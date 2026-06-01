@@ -76,6 +76,17 @@ export function UserMenu() {
             <button onClick={() => go("/me/bookmarks")}>Bookmarks</button>
             <button onClick={() => go("/settings")}>Settings</button>
           </div>
+          {user.role === "admin" && (
+            <>
+              <div className="um-sep"></div>
+              <div className="um-list">
+                <button onClick={() => go("/admin/review")}>
+                  Review queue
+                </button>
+                <button onClick={() => go("/admin")}>Admin settings</button>
+              </div>
+            </>
+          )}
           <div className="um-sep"></div>
           <button
             className="um-signout"

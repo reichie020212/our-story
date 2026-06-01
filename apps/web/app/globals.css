@@ -1013,6 +1013,38 @@ body[data-theme="ink"]::before {
   color: var(--accent);
   background: var(--accent-soft);
 }
+/* Approval-workflow status badges (Drafts view + review queue). */
+.status-pill.pending-review {
+  color: oklch(48% 0.12 75);
+  background: oklch(92% 0.06 85);
+}
+.status-pill.rejected {
+  color: oklch(48% 0.16 25);
+  background: oklch(92% 0.06 25);
+}
+
+/* Inline rejection note on a rejected story card / queue row. */
+.reject-reason {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: oklch(45% 0.14 25);
+  background: oklch(95% 0.04 25);
+  border-left: 2px solid oklch(60% 0.16 25);
+  padding: 8px 10px;
+  border-radius: 0 6px 6px 0;
+}
+
+/* "Sent for approval" confirmation banner under the composer header. */
+.composer-review-note {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  background: var(--accent-soft);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
 
 .composer-grid {
   display: grid;
@@ -1779,4 +1811,205 @@ body[data-theme="ink"]::before {
   .topbar .search {
     display: none;
   }
+}
+
+/* ---------- Admin pages (settings / review queue / users) ---------- */
+.admin-links {
+  display: flex;
+  gap: 20px;
+  margin-top: 24px;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.admin-links a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.admin-links a:hover {
+  text-decoration: underline;
+}
+
+.admin-panel {
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+}
+.admin-panel-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+.admin-panel-row h4 {
+  font-family: var(--serif);
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 6px;
+}
+.admin-panel-row p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 460px;
+}
+.admin-panel-state {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule-soft);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--ink-mute);
+}
+
+/* Toggle switch */
+.admin-switch {
+  flex-shrink: 0;
+  width: 52px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule);
+  position: relative;
+  transition: background 0.15s;
+  cursor: pointer;
+}
+.admin-switch.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.admin-switch:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.admin-switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s;
+}
+.admin-switch.on .admin-switch-knob {
+  transform: translateX(22px);
+}
+
+/* Review queue cards */
+.admin-review-card {
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding: 22px 24px;
+}
+.admin-review-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.admin-review-head h3 {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 500;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.admin-review-byline {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-mute);
+  font-family: var(--mono);
+}
+.admin-review-synopsis {
+  margin: 14px 0 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.admin-review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 32px;
+  margin: 18px 0 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--rule-soft);
+  border-bottom: 1px solid var(--rule-soft);
+}
+.admin-review-meta dt {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 3px;
+}
+.admin-review-meta dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink);
+}
+.admin-review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+.admin-review-reject {
+  margin-top: 18px;
+}
+.admin-review-reject textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: var(--sans);
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.btn.btn-danger {
+  background: oklch(52% 0.18 25);
+  color: #fff;
+}
+.btn.btn-danger:hover {
+  background: oklch(46% 0.18 25);
+}
+
+/* User-management table */
+.admin-user-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.admin-user-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--rule-soft);
+}
+.admin-user-row:last-child {
+  border-bottom: none;
+}
+.admin-user-id {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.admin-user-id b {
+  font-weight: 500;
+}
+.admin-user-id span {
+  font-size: 12px;
+  color: var(--ink-mute);
+  font-family: var(--mono);
 }

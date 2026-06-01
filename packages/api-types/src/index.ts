@@ -36,11 +36,18 @@ export type StoryLength = z.infer<typeof StoryLengthSchema>;
 
 export const StoryStatusSchema = z.enum([
   "draft",
+  "pending_review",
   "published",
+  "rejected",
   "unlisted",
   "private",
 ]);
 export type StoryStatus = z.infer<typeof StoryStatusSchema>;
+
+/** Authorization role. `admin` can toggle the approval gate, review the
+ *  pending-story queue, and promote/demote other users. */
+export const UserRoleSchema = z.enum(["user", "admin"]);
+export type UserRole = z.infer<typeof UserRoleSchema>;
 
 // ---------- Error envelope ----------
 
@@ -66,6 +73,7 @@ export const PublicUserSchema = z.object({
   name: z.string(),
   handle: z.string(),
   initial: z.string(),
+  role: UserRoleSchema,
 });
 export type PublicUser = z.infer<typeof PublicUserSchema>;
 
@@ -100,6 +108,13 @@ export const StoryWireSchema = z.object({
   likes: z.number().int(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  // Approval-workflow audit fields. Present on owner-visible and
+  // admin-review responses; `rejectionReason` is non-null only after a
+  // rejection. Optional on the wire so list endpoints that don't select
+  // them stay valid.
+  submittedForReviewAt: z.string().nullable().optional(),
+  reviewedAt: z.string().nullable().optional(),
+  rejectionReason: z.string().nullable().optional(),
   author: StoryAuthorSchema,
   liked: z.boolean().optional(),
   bookmarked: z.boolean().optional(),
@@ -180,3 +195,42 @@ export const TrendingTagsResponseSchema = z.object({
   tags: z.array(z.object({ tag: z.string(), count: z.number().int() })),
 });
 export type TrendingTagsResponse = z.infer<typeof TrendingTagsResponseSchema>;
+
+// ---------- App settings (approval gate) ----------
+
+/** GET /api/v1/settings (public) and GET/PATCH /api/v1/admin/settings.
+ *  `approvalRequired` is the global publish gate: when true, non-admin
+ *  authors submit stories for review instead of publishing directly. */
+export const AppSettingsSchema = z.object({
+  approvalRequired: z.boolean(),
+});
+export type AppSettings = z.infer<typeof AppSettingsSchema>;
+
+export const AppSettingsResponseSchema = z.object({
+  settings: AppSettingsSchema,
+});
+export type AppSettingsResponse = z.infer<typeof AppSettingsResponseSchema>;
+
+// ---------- Admin: user management ----------
+
+/** Row shape for the admin user-management list. Includes email + role +
+ *  signup date — admin-only, never used for public bylines. */
+export const AdminUserSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  name: z.string(),
+  handle: z.string(),
+  role: UserRoleSchema,
+  createdAt: z.string(),
+});
+export type AdminUser = z.infer<typeof AdminUserSchema>;
+
+export const AdminUserListResponseSchema = z.object({
+  users: z.array(AdminUserSchema),
+});
+export type AdminUserListResponse = z.infer<
+  typeof AdminUserListResponseSchema
+>;
+
+export const AdminUserResponseSchema = z.object({ user: AdminUserSchema });
+export type AdminUserResponse = z.infer<typeof AdminUserResponseSchema>;

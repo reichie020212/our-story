@@ -39,6 +39,8 @@ import {
   isEmailVerified,
   issueRawVerificationToken,
   markEmailVerified,
+  setApprovalRequired,
+  setUserRole,
   uniqueEmail,
 } from "./helpers";
 
@@ -652,5 +654,233 @@ describe("validation rejections", () => {
       body: JSON.stringify({ title: "nope" }),
     });
     expect(res.status).toBe(401);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Story approval workflow: admin-toggled publish gate, send-for-approval,
+// approve/reject, admin bypass, role guards, and user management.
+// ---------------------------------------------------------------------------
+
+describe("story approval flow", () => {
+  let writer: MobileAuthResponse;
+  let admin: MobileAuthResponse;
+  const writerEmail = uniqueEmail("approval-writer");
+  const adminEmail = uniqueEmail("approval-admin");
+  const createdSlugs: string[] = [];
+
+  const draft = async (auth: MobileAuthResponse, title: string) => {
+    const res = await api<StoryResponse>("/api/v1/stories", {
+      method: "POST",
+      bearer: auth.accessToken,
+      body: JSON.stringify({
+        title,
+        synopsis: "Approval-flow integration story.",
+        body: ["Paragraph one.", "Paragraph two."],
+      }),
+    });
+    const slug = StoryResponseSchema.parse(res.body).story.slug;
+    createdSlugs.push(slug);
+    return slug;
+  };
+
+  const signupVerifiedLogin = async (email: string, name: string) => {
+    await api("/api/v1/auth/mobile/signup", {
+      method: "POST",
+      body: JSON.stringify({ email, password: "password123", name }),
+    });
+    await markEmailVerified(email);
+    const login = await api<MobileAuthResponse>("/api/v1/auth/mobile/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password: "password123" }),
+    });
+    return MobileAuthResponseSchema.parse(login.body);
+  };
+
+  beforeAll(async () => {
+    writer = await signupVerifiedLogin(writerEmail, "Approval Writer");
+    admin = await signupVerifiedLogin(adminEmail, "Approval Admin");
+    await setUserRole(adminEmail, "admin");
+    await setApprovalRequired(false);
+  });
+
+  afterAll(async () => {
+    await setApprovalRequired(false);
+    for (const slug of createdSlugs) {
+      await api(`/api/v1/stories/${slug}`, {
+        method: "DELETE",
+        bearer: admin.accessToken,
+      }).catch(() => {});
+    }
+  });
+
+  it("/auth/me carries the role", async () => {
+    const me = await api<UserResponse>("/api/v1/auth/me", {
+      bearer: admin.accessToken,
+    });
+    expect(UserResponseSchema.parse(me.body).user.role).toBe("admin");
+  });
+
+  it("approval OFF: writer publishes directly", async () => {
+    const slug = await draft(writer, `Direct publish ${Date.now()}`);
+    const res = await api<StoryResponse>(`/api/v1/stories/${slug}/publish`, {
+      method: "POST",
+      bearer: writer.accessToken,
+    });
+    expect(res.status).toBe(200);
+    expect(StoryResponseSchema.parse(res.body).story.status).toBe("published");
+  });
+
+  it("non-admin cannot toggle settings (403)", async () => {
+    const res = await api("/api/v1/admin/settings", {
+      method: "PATCH",
+      bearer: writer.accessToken,
+      body: JSON.stringify({ approvalRequired: true }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("admin enables the approval gate", async () => {
+    const res = await api<{ settings: { approvalRequired: boolean } }>(
+      "/api/v1/admin/settings",
+      {
+        method: "PATCH",
+        bearer: admin.accessToken,
+        body: JSON.stringify({ approvalRequired: true }),
+      },
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.settings.approvalRequired).toBe(true);
+  });
+
+  it("approval ON: writer publish goes to pending_review", async () => {
+    const slug = await draft(writer, `Needs review ${Date.now()}`);
+    const res = await api<StoryResponse>(`/api/v1/stories/${slug}/publish`, {
+      method: "POST",
+      bearer: writer.accessToken,
+    });
+    expect(res.status).toBe(200);
+    const story = StoryResponseSchema.parse(res.body).story;
+    expect(story.status).toBe("pending_review");
+    expect(story.submittedForReviewAt).toBeTruthy();
+  });
+
+  it("admin bypasses the gate (own story publishes directly)", async () => {
+    const slug = await draft(admin, `Admin direct ${Date.now()}`);
+    const res = await api<StoryResponse>(`/api/v1/stories/${slug}/publish`, {
+      method: "POST",
+      bearer: admin.accessToken,
+    });
+    expect(StoryResponseSchema.parse(res.body).story.status).toBe("published");
+  });
+
+  it("review queue is admin-only and lists the pending story", async () => {
+    const forbidden = await api("/api/v1/admin/review-queue", {
+      bearer: writer.accessToken,
+    });
+    expect(forbidden.status).toBe(403);
+
+    const queue = await api<{ stories: { status: string }[] }>(
+      "/api/v1/admin/review-queue",
+      { bearer: admin.accessToken },
+    );
+    expect(queue.status).toBe(200);
+    expect(queue.body.stories.length).toBeGreaterThan(0);
+    expect(queue.body.stories.every((s) => s.status === "pending_review")).toBe(
+      true,
+    );
+  });
+
+  it("reject → rejected with reason, resubmit → pending, approve → published", async () => {
+    const slug = await draft(writer, `Full cycle ${Date.now()}`);
+    // submit
+    await api(`/api/v1/stories/${slug}/publish`, {
+      method: "POST",
+      bearer: writer.accessToken,
+    });
+
+    // writer can't approve/reject (403)
+    const guard = await api(`/api/v1/stories/${slug}/approve`, {
+      method: "POST",
+      bearer: writer.accessToken,
+    });
+    expect(guard.status).toBe(403);
+
+    // reject with a reason
+    const rejected = await api<StoryResponse>(
+      `/api/v1/stories/${slug}/reject`,
+      {
+        method: "POST",
+        bearer: admin.accessToken,
+        body: JSON.stringify({ reason: "Needs a stronger opening." }),
+      },
+    );
+    const rs = StoryResponseSchema.parse(rejected.body).story;
+    expect(rs.status).toBe("rejected");
+    expect(rs.rejectionReason).toBe("Needs a stronger opening.");
+
+    // resubmit clears the verdict and returns to pending
+    const resubmit = await api<StoryResponse>(
+      `/api/v1/stories/${slug}/publish`,
+      { method: "POST", bearer: writer.accessToken },
+    );
+    const rsub = StoryResponseSchema.parse(resubmit.body).story;
+    expect(rsub.status).toBe("pending_review");
+    expect(rsub.rejectionReason).toBeNull();
+
+    // approve → published
+    const approved = await api<StoryResponse>(
+      `/api/v1/stories/${slug}/approve`,
+      { method: "POST", bearer: admin.accessToken },
+    );
+    const ap = StoryResponseSchema.parse(approved.body).story;
+    expect(ap.status).toBe("published");
+    expect(ap.reviewedAt).toBeTruthy();
+
+    // approving a non-pending story is a 409
+    const again = await api(`/api/v1/stories/${slug}/approve`, {
+      method: "POST",
+      bearer: admin.accessToken,
+    });
+    expect(again.status).toBe(409);
+  });
+
+  it("user management: list, promote, and self-demote guard", async () => {
+    const forbidden = await api("/api/v1/admin/users", {
+      bearer: writer.accessToken,
+    });
+    expect(forbidden.status).toBe(403);
+
+    const list = await api<{ users: { id: string; email: string }[] }>(
+      "/api/v1/admin/users",
+      { bearer: admin.accessToken },
+    );
+    expect(list.status).toBe(200);
+    const writerRow = list.body.users.find((u) => u.email === writerEmail);
+    expect(writerRow).toBeTruthy();
+
+    // promote the writer
+    const promoted = await api<{ user: { role: string } }>(
+      `/api/v1/admin/users/${writerRow!.id}`,
+      {
+        method: "PATCH",
+        bearer: admin.accessToken,
+        body: JSON.stringify({ role: "admin" }),
+      },
+    );
+    expect(promoted.body.user.role).toBe("admin");
+
+    // admin can't demote themselves
+    const adminRow = list.body.users.find((u) => u.email === adminEmail);
+    const selfDemote = await api<{ error: { code: string } }>(
+      `/api/v1/admin/users/${adminRow!.id}`,
+      {
+        method: "PATCH",
+        bearer: admin.accessToken,
+        body: JSON.stringify({ role: "user" }),
+      },
+    );
+    expect(selfDemote.status).toBe(422);
+    expect(selfDemote.body.error.code).toBe("cannot_demote_self");
   });
 });

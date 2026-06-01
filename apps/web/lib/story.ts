@@ -45,6 +45,9 @@ export function serializeStory(
     likes: story.likeCount,
     createdAt: story.createdAt.toISOString(),
     updatedAt: story.updatedAt.toISOString(),
+    submittedForReviewAt: story.submittedForReviewAt?.toISOString() ?? null,
+    reviewedAt: story.reviewedAt?.toISOString() ?? null,
+    rejectionReason: story.rejectionReason ?? null,
     author: {
       id: author.id,
       name: author.name,

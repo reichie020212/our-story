@@ -7,6 +7,7 @@ import {
   requireUser,
 } from "@/lib/auth-guard";
 import { enforce, getLimiter } from "@/lib/ratelimit";
+import { isApprovalRequired } from "@/lib/settings";
 import { paragraphsFromBody, serializeStory } from "@/lib/story";
 
 export const runtime = "nodejs";
@@ -54,14 +55,40 @@ export async function POST(
       );
     }
 
-    const updated = await db.story.update({
-      where: { id: story.id },
-      data: {
-        status: "published",
-        publishedAt: story.publishedAt ?? new Date(),
-      },
-      include: { author: true },
-    });
+    // The approval gate covers only the draft → published transition.
+    // It's bypassed when the gate is off, when the author is an admin, or
+    // when the story is already published (editing a live story keeps it
+    // live — re-publishing doesn't drop it back into review).
+    const approvalRequired = await isApprovalRequired();
+    const bypassesReview =
+      !approvalRequired ||
+      user.role === "admin" ||
+      story.status === "published";
+
+    const updated = bypassesReview
+      ? await db.story.update({
+          where: { id: story.id },
+          data: {
+            status: "published",
+            publishedAt: story.publishedAt ?? new Date(),
+            rejectionReason: null,
+          },
+          include: { author: true },
+        })
+      : await db.story.update({
+          where: { id: story.id },
+          // Non-admin author submitting under the gate: hand the story to
+          // the review queue. Reset any prior review verdict so an edited,
+          // resubmitted (previously rejected) story starts clean.
+          data: {
+            status: "pending_review",
+            submittedForReviewAt: new Date(),
+            reviewedAt: null,
+            reviewedById: null,
+            rejectionReason: null,
+          },
+          include: { author: true },
+        });
 
     return json({ story: serializeStory(updated, updated.author) });
   } catch (err) {

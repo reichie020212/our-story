@@ -43,6 +43,7 @@ function VerifyEmailInner() {
             name: string;
             handle: string;
             initial: string;
+            role: "user" | "admin";
           };
         }>("/api/v1/auth/verify-email", "POST", { token });
         if (cancelled) return;

@@ -33,7 +33,9 @@ enum StoryLength {
 
 enum StoryStatus {
   draft
+  pending_review
   published
+  rejected
   unlisted
   private
 }
@@ -41,6 +43,11 @@ enum StoryStatus {
 enum OAuthProvider {
   google
   github
+}
+
+enum UserRole {
+  user
+  admin
 }
 
 model User {
@@ -58,11 +65,15 @@ model User {
   // OAuth signups set this immediately (provider already proved email
   // control). Unverified users can't sign in.
   emailVerifiedAt DateTime?      @map("email_verified_at")
+  // Authorization role. `admin` can toggle the approval gate, review the
+  // pending-story queue, and promote/demote other users. Defaults to `user`.
+  role            UserRole       @default(user)
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
   sessions           Session[]
-  stories            Story[]
+  stories            Story[]                  @relation("StoryAuthor")
+  reviewedStories    Story[]                  @relation("StoryReviewer")
   likes              Like[]
   bookmarks          Bookmark[]
   mobileTokens       MobileRefreshToken[]
@@ -70,6 +81,19 @@ model User {
 
   @@unique([oauthProvider, oauthId])
   @@map("users")
+}
+
+// Global, runtime-toggleable app configuration. A single row (id "global")
+// holds platform-wide flags. `approvalRequired` gates story publishing: when
+// true, non-admin authors submit stories for admin review instead of
+// publishing directly. Defaults to false (direct publish, the v1 behavior).
+model AppSetting {
+  id               String   @id @default("global")
+  approvalRequired Boolean  @default(false) @map("approval_required")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  updatedById      String?  @map("updated_by_id")
+
+  @@map("app_settings")
 }
 
 // Single-use email verification tokens. Raw token is handed to the user
@@ -122,44 +146,53 @@ model Session {
 }
 
 model Story {
-  id           String                   @id @default(cuid())
-  slug         String                   @unique
-  authorId     String                   @map("author_id")
-  title        String
-  synopsis     String
+  id                   String                   @id @default(cuid())
+  slug                 String                   @unique
+  authorId             String                   @map("author_id")
+  title                String
+  synopsis             String
   // Heterogeneous-by-design but image-block-free in v1: a Json string[].
   // Kept as Json (not String[]) so a future image-block re-introduction
   // doesn't require a migration.
-  body         Json
-  genre        Genre
-  length       StoryLength
-  tags         String[]
-  status       StoryStatus              @default(draft)
-  featured     Boolean                  @default(false)
-  publishedAt  DateTime?                @map("published_at")
-  minutes      Int                      @default(0)
-  viewCount    Int                      @default(0) @map("view_count")
-  likeCount    Int                      @default(0) @map("like_count")
+  body                 Json
+  genre                Genre
+  length               StoryLength
+  tags                 String[]
+  status               StoryStatus              @default(draft)
+  featured             Boolean                  @default(false)
+  publishedAt          DateTime?                @map("published_at")
+  // Approval workflow audit trail. Set when a non-admin author submits the
+  // story for review (status -> pending_review). reviewedAt/reviewedById/
+  // rejectionReason are filled by the admin who approves or rejects it.
+  submittedForReviewAt DateTime?                @map("submitted_for_review_at")
+  reviewedAt           DateTime?                @map("reviewed_at")
+  reviewedById         String?                  @map("reviewed_by_id")
+  rejectionReason      String?                  @map("rejection_reason")
+  minutes              Int                      @default(0)
+  viewCount            Int                      @default(0) @map("view_count")
+  likeCount            Int                      @default(0) @map("like_count")
   // Soft-delete: rows with deletedAt set are excluded from public lists
   // but kept in the table so likes/bookmarks/views stay referentially
   // sound. Hard-delete is left to a periodic GC, not the API.
-  deletedAt    DateTime?                @map("deleted_at")
-  createdAt    DateTime                 @default(now()) @map("created_at")
-  updatedAt    DateTime                 @updatedAt @map("updated_at")
+  deletedAt            DateTime?                @map("deleted_at")
+  createdAt            DateTime                 @default(now()) @map("created_at")
+  updatedAt            DateTime                 @updatedAt @map("updated_at")
   // Postgres-generated tsvector for full-text search on title (A) +
   // synopsis (B) + tags (C). Maintained by the database via STORED
   // GENERATED column; the app never writes to it directly. The matching
   // GIN index is declared in the migration since Prisma can't index an
   // Unsupported type via @@index.
-  searchVector Unsupported("tsvector")? @map("search_vector")
+  searchVector         Unsupported("tsvector")? @map("search_vector")
 
-  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User       @relation("StoryAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  reviewer  User?      @relation("StoryReviewer", fields: [reviewedById], references: [id])
   likes     Like[]
   bookmarks Bookmark[]
   views     View[]
 
   @@index([authorId])
   @@index([status, publishedAt])
+  @@index([status, submittedForReviewAt])
   @@index([genre])
   @@index([featured])
   @@index([deletedAt])

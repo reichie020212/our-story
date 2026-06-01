@@ -57,6 +57,14 @@ export async function requireUser(): Promise<PublicUser> {
   return user;
 }
 
+/** Resolve the current user and require the `admin` role. Throws
+ *  UnauthorizedError when signed out, ForbiddenError when not an admin. */
+export async function requireAdmin(): Promise<PublicUser> {
+  const user = await requireUser();
+  if (user.role !== "admin") throw new ForbiddenError();
+  return user;
+}
+
 /** Convert an HttpError into a NextResponse; rethrow anything else. */
 export function handleError(err: unknown): NextResponse {
   if (err instanceof HttpError) {
