@@ -178,11 +178,17 @@ function StoryCardSimple({ story }: { story: StoryWire }) {
         : story.status === "draft"
           ? { label: "Draft", cls: "" }
           : null;
+  // Non-published stories (draft / pending review / rejected) open in the
+  // composer for editing + resubmission; published ones open in the reader.
+  const href =
+    story.status === "published"
+      ? `/s/${story.slug}`
+      : `/compose?edit=${story.slug}`;
   return (
     <article
       className="story-card"
       style={{ ["--genre-color" as string]: genre.color } as CSSProperties}
-      onClick={() => router.push(`/s/${story.slug}`)}
+      onClick={() => router.push(href)}
     >
       <div className="meta-row">
         <span className="genre">

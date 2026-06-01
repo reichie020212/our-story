@@ -17,7 +17,7 @@ type Status =
   | "submitted";
 type Format = { bold: boolean; italic: boolean; underline: boolean };
 
-export function Composer() {
+export function Composer({ editSlug }: { editSlug?: string }) {
   const router = useRouter();
   const { user } = useAuth();
   const [storyId, setStoryId] = useState<string | null>(null);
@@ -33,11 +33,49 @@ export function Composer() {
   const [status, setStatus] = useState<Status>("draft");
   const [error, setError] = useState("");
   const [approvalRequired, setApprovalRequired] = useState(false);
+  // Set when loading an existing rejected story so we can show the
+  // editor's note above the editor.
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  // null = creating a new story; "loading"/"ready"/"error" while/after
+  // hydrating an existing one for editing.
+  const [loadState, setLoadState] = useState<
+    null | "loading" | "ready" | "error"
+  >(editSlug ? "loading" : null);
   const [activeFormat, setActiveFormat] = useState<Format>({
     bold: false,
     italic: false,
     underline: false,
   });
+
+  // Edit mode: hydrate the form from an existing owned story (drafts,
+  // rejected, or pending). The story GET is owner-visible for non-published
+  // statuses, so this only works for the author (or an admin).
+  useEffect(() => {
+    if (!editSlug) return;
+    let cancelled = false;
+    setLoadState("loading");
+    apiGet<{ story: StoryWire }>(`/api/v1/stories/${editSlug}`)
+      .then(({ story }) => {
+        if (cancelled) return;
+        setStoryId(story.id);
+        setStorySlug(story.slug);
+        setTitle(story.title);
+        setSynopsis(story.synopsis);
+        setBody(story.body.join("\n\n"));
+        setGenre(story.genre);
+        setLength(story.length);
+        setTags(story.tags);
+        setRejectionReason(story.rejectionReason ?? null);
+        setStatus("saved");
+        setLoadState("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setLoadState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editSlug]);
 
   // When the global approval gate is on, a non-admin author "sends for
   // approval" instead of publishing directly. Admins always publish directly.
@@ -174,11 +212,58 @@ export function Composer() {
     </button>
   );
 
+  if (loadState === "loading") {
+    return (
+      <section className="composer" data-screen-label="04 Composer">
+        <div
+          style={{
+            padding: "80px 20px",
+            textAlign: "center",
+            color: "var(--ink-mute)",
+            fontFamily: "var(--mono)",
+            fontSize: 12,
+            letterSpacing: "0.1em",
+          }}
+        >
+          loading story…
+        </div>
+      </section>
+    );
+  }
+
+  if (loadState === "error") {
+    return (
+      <section className="composer" data-screen-label="04 Composer">
+        <div style={{ padding: "80px 20px", textAlign: "center" }}>
+          <h2 style={{ fontFamily: "var(--serif)", fontSize: 28, margin: 0 }}>
+            Couldn&apos;t open that story
+          </h2>
+          <p style={{ color: "var(--ink-mute)", margin: "12px 0 20px" }}>
+            It may not exist, or it isn&apos;t yours to edit.
+          </p>
+          <button className="btn" onClick={() => router.push("/me/drafts")}>
+            Back to drafts
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  const editing = !!editSlug;
+
   return (
     <section className="composer" data-screen-label="04 Composer">
       <div className="composer-head">
         <h2>
-          Write a <em>new</em> story.
+          {editing ? (
+            <>
+              Edit your <em>story</em>.
+            </>
+          ) : (
+            <>
+              Write a <em>new</em> story.
+            </>
+          )}
         </h2>
         <div className="actions">
           {user && (
@@ -259,6 +344,17 @@ export function Composer() {
           Your story was sent for approval. It will appear under{" "}
           <b>Drafts</b> as <b>“Pending review”</b> until an editor approves it —
           you&apos;ll see the result there.
+        </div>
+      )}
+      {rejectionReason && status !== "submitted" && (
+        <div
+          className="reject-reason"
+          style={{ marginBottom: 16, maxWidth: 720 }}
+        >
+          <b>Rejected — editor&apos;s note:</b> {rejectionReason}
+          <br />
+          Make your changes and{" "}
+          {needsApproval ? "send it for approval again" : "publish again"}.
         </div>
       )}
       {error && (

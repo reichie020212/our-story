@@ -1,11 +1,23 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Composer } from "@/components/Composer";
 import { GatedNotice } from "@/components/GatedNotice";
 import { useAuth } from "@/components/AuthProvider";
 
-export default function ComposePage() {
+function ComposeInner() {
   const { user } = useAuth();
+  const params = useSearchParams();
   if (!user) return <GatedNotice action="write" />;
-  return <Composer />;
+  const editSlug = params.get("edit") ?? undefined;
+  return <Composer editSlug={editSlug} />;
+}
+
+export default function ComposePage() {
+  return (
+    <Suspense fallback={null}>
+      <ComposeInner />
+    </Suspense>
+  );
 }
