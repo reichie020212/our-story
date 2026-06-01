@@ -5,14 +5,15 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "vercel-build": "prisma migrate deploy && next build",
+    "vercel-build": "prisma migrate deploy && tsx scripts/ensure-superadmin.ts && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run --exclude '**/*.integration.test.ts'",
     "test:watch": "vitest --exclude '**/*.integration.test.ts'",
     "test:integration": "vitest run __tests__/auth-flow.integration.test.ts",
     "db:migrate": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:ensure-superadmin": "tsx scripts/ensure-superadmin.ts"
   },
   "dependencies": {
     "@our-story/api-types": "workspace:*",

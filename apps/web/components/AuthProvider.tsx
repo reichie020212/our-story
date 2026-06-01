@@ -17,6 +17,7 @@ export type User = {
   initial: string;
   handle: string;
   role: "user" | "admin";
+  isSuperadmin: boolean;
 };
 
 export type AuthReason = "write" | null;

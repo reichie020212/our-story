@@ -44,6 +44,7 @@ function VerifyEmailInner() {
             handle: string;
             initial: string;
             role: "user" | "admin";
+            isSuperadmin: boolean;
           };
         }>("/api/v1/auth/verify-email", "POST", { token });
         if (cancelled) return;

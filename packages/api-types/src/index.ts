@@ -74,6 +74,10 @@ export const PublicUserSchema = z.object({
   handle: z.string(),
   initial: z.string(),
   role: UserRoleSchema,
+  // The bootstrapped superadmin (one account, from SUPERADMIN_* env vars).
+  // Always also an admin; undemotable; the flag can only be toggled by a
+  // superadmin and never unset on oneself.
+  isSuperadmin: z.boolean(),
 });
 export type PublicUser = z.infer<typeof PublicUserSchema>;
 
@@ -221,6 +225,7 @@ export const AdminUserSchema = z.object({
   name: z.string(),
   handle: z.string(),
   role: UserRoleSchema,
+  isSuperadmin: z.boolean(),
   createdAt: z.string(),
 });
 export type AdminUser = z.infer<typeof AdminUserSchema>;

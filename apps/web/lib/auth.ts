@@ -59,6 +59,7 @@ function publicUser(user: User): PublicUser {
     handle: user.handle,
     initial: user.initial,
     role: user.role,
+    isSuperadmin: user.isSuperadmin,
   };
 }
 

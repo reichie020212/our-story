@@ -40,6 +40,7 @@ import {
   issueRawVerificationToken,
   markEmailVerified,
   setApprovalRequired,
+  setSuperadmin,
   setUserRole,
   uniqueEmail,
 } from "./helpers";
@@ -882,5 +883,121 @@ describe("story approval flow", () => {
     );
     expect(selfDemote.status).toBe(422);
     expect(selfDemote.body.error.code).toBe("cannot_demote_self");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Superadmin: undemotable, role locked, flag managed only by a superadmin
+// (and never unset on oneself).
+// ---------------------------------------------------------------------------
+
+describe("superadmin", () => {
+  let superA: MobileAuthResponse;
+  let admin: MobileAuthResponse;
+  let writer: MobileAuthResponse;
+  const superEmail = uniqueEmail("super");
+  const adminEmail = uniqueEmail("plain-admin");
+  const writerEmail = uniqueEmail("plain-writer");
+
+  const login = async (email: string) => {
+    await api("/api/v1/auth/mobile/signup", {
+      method: "POST",
+      body: JSON.stringify({ email, password: "password123", name: "T" }),
+    });
+    await markEmailVerified(email);
+    const res = await api<MobileAuthResponse>("/api/v1/auth/mobile/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password: "password123" }),
+    });
+    return MobileAuthResponseSchema.parse(res.body);
+  };
+
+  const idOf = async (auth: MobileAuthResponse, email: string) => {
+    const list = await api<{ users: { id: string; email: string }[] }>(
+      "/api/v1/admin/users",
+      { bearer: auth.accessToken },
+    );
+    return list.body.users.find((u) => u.email === email)!.id;
+  };
+
+  beforeAll(async () => {
+    superA = await login(superEmail);
+    admin = await login(adminEmail);
+    writer = await login(writerEmail);
+    await setUserRole(adminEmail, "admin");
+    await setSuperadmin(superEmail, true);
+  });
+
+  it("login carries isSuperadmin", async () => {
+    const res = await api<MobileAuthResponse>("/api/v1/auth/mobile/login", {
+      method: "POST",
+      body: JSON.stringify({ email: superEmail, password: "password123" }),
+    });
+    const parsed = MobileAuthResponseSchema.parse(res.body);
+    expect(parsed.user.isSuperadmin).toBe(true);
+    expect(parsed.user.role).toBe("admin");
+  });
+
+  it("a regular admin cannot change the superadmin's role", async () => {
+    const superId = await idOf(admin, superEmail);
+    const res = await api<{ error: { code: string } }>(
+      `/api/v1/admin/users/${superId}`,
+      {
+        method: "PATCH",
+        bearer: admin.accessToken,
+        body: JSON.stringify({ role: "user" }),
+      },
+    );
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe("cannot_change_superadmin_role");
+  });
+
+  it("a regular admin cannot toggle the superadmin flag", async () => {
+    const writerId = await idOf(admin, writerEmail);
+    const res = await api<{ error: { code: string } }>(
+      `/api/v1/admin/users/${writerId}`,
+      {
+        method: "PATCH",
+        bearer: admin.accessToken,
+        body: JSON.stringify({ isSuperadmin: true }),
+      },
+    );
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("superadmin_only");
+  });
+
+  it("a superadmin can grant the flag (and it implies admin)", async () => {
+    const writerId = await idOf(superA, writerEmail);
+    const res = await api<{ user: { role: string; isSuperadmin: boolean } }>(
+      `/api/v1/admin/users/${writerId}`,
+      {
+        method: "PATCH",
+        bearer: superA.accessToken,
+        body: JSON.stringify({ isSuperadmin: true }),
+      },
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.user.isSuperadmin).toBe(true);
+    expect(res.body.user.role).toBe("admin");
+    // cleanup: revoke
+    await api(`/api/v1/admin/users/${writerId}`, {
+      method: "PATCH",
+      bearer: superA.accessToken,
+      body: JSON.stringify({ isSuperadmin: false }),
+    });
+  });
+
+  it("a superadmin cannot unset their own flag", async () => {
+    const superId = await idOf(superA, superEmail);
+    const res = await api<{ error: { code: string } }>(
+      `/api/v1/admin/users/${superId}`,
+      {
+        method: "PATCH",
+        bearer: superA.accessToken,
+        body: JSON.stringify({ isSuperadmin: false }),
+      },
+    );
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe("cannot_unset_self_superadmin");
   });
 });

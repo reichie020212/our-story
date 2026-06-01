@@ -46,26 +46,35 @@ function UserList() {
     };
   }, []);
 
-  const setRole = async (id: string, role: "user" | "admin") => {
+  const patchUser = async (
+    id: string,
+    body: { role?: "user" | "admin"; isSuperadmin?: boolean },
+    failMsg: string,
+  ) => {
     setBusyId(id);
     setError(null);
     try {
       const data = await apiSend<AdminUserResponse>(
         `/api/v1/admin/users/${id}`,
         "PATCH",
-        { role },
+        body,
       );
       setUsers((prev) =>
         prev ? prev.map((u) => (u.id === id ? data.user : u)) : prev,
       );
     } catch (err) {
-      setError(
-        err instanceof ApiCallError ? err.message : "Couldn't update role.",
-      );
+      setError(err instanceof ApiCallError ? err.message : failMsg);
     } finally {
       setBusyId(null);
     }
   };
+
+  const setRole = (id: string, role: "user" | "admin") =>
+    patchUser(id, { role }, "Couldn't update role.");
+  const setSuperadmin = (id: string, isSuperadmin: boolean) =>
+    patchUser(id, { isSuperadmin }, "Couldn't update superadmin status.");
+
+  const meIsSuperadmin = !!me?.isSuperadmin;
 
   return (
     <>
@@ -98,10 +107,21 @@ function UserList() {
         {(users ?? []).map((u) => {
           const isSelf = me?.id === u.id;
           const isAdmin = u.role === "admin";
+          const busy = busyId === u.id;
           return (
             <div key={u.id} className="admin-user-row">
               <div className="admin-user-id">
-                <b>{u.name}</b>
+                <b>
+                  {u.name}
+                  {u.isSuperadmin && (
+                    <span
+                      className="status-pill saved"
+                      style={{ marginLeft: 8, fontSize: 9 }}
+                    >
+                      superadmin
+                    </span>
+                  )}
+                </b>
                 <span>
                   {u.handle} · {u.email}
                 </span>
@@ -112,20 +132,44 @@ function UserList() {
               >
                 {u.role}
               </span>
-              <button
-                className="btn-ghost btn"
-                disabled={busyId === u.id || (isSelf && isAdmin)}
-                title={
-                  isSelf && isAdmin ? "You can't remove your own admin role" : ""
-                }
-                onClick={() => setRole(u.id, isAdmin ? "user" : "admin")}
+              <div
+                style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}
               >
-                {busyId === u.id
-                  ? "Saving…"
-                  : isAdmin
-                    ? "Demote to user"
-                    : "Promote to admin"}
-              </button>
+                {/* A superadmin's role is locked; no demote/promote control. */}
+                {!u.isSuperadmin && (
+                  <button
+                    className="btn-ghost btn"
+                    disabled={busy || (isSelf && isAdmin)}
+                    title={
+                      isSelf && isAdmin
+                        ? "You can't remove your own admin role"
+                        : ""
+                    }
+                    onClick={() => setRole(u.id, isAdmin ? "user" : "admin")}
+                  >
+                    {busy ? "Saving…" : isAdmin ? "Demote to user" : "Promote to admin"}
+                  </button>
+                )}
+                {/* Only a superadmin can grant/revoke the flag, never on self. */}
+                {meIsSuperadmin && (
+                  <button
+                    className="btn-ghost btn"
+                    disabled={busy || (isSelf && u.isSuperadmin)}
+                    title={
+                      isSelf && u.isSuperadmin
+                        ? "You can't remove your own superadmin status"
+                        : ""
+                    }
+                    onClick={() => setSuperadmin(u.id, !u.isSuperadmin)}
+                  >
+                    {busy
+                      ? "Saving…"
+                      : u.isSuperadmin
+                        ? "Revoke superadmin"
+                        : "Make superadmin"}
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}

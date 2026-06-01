@@ -53,6 +53,7 @@ export async function POST(req: Request) {
       handle: true,
       initial: true,
       role: true,
+      isSuperadmin: true,
     },
   });
   if (!user) return error(404, "user_missing", "User account was not found.");

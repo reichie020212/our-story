@@ -16,6 +16,7 @@ export async function GET() {
         name: true,
         handle: true,
         role: true,
+        isSuperadmin: true,
         createdAt: true,
       },
     });
@@ -26,6 +27,7 @@ export async function GET() {
         name: u.name,
         handle: u.handle,
         role: u.role,
+        isSuperadmin: u.isSuperadmin,
         createdAt: u.createdAt.toISOString(),
       })),
     });

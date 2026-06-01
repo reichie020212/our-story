@@ -68,6 +68,10 @@ model User {
   // Authorization role. `admin` can toggle the approval gate, review the
   // pending-story queue, and promote/demote other users. Defaults to `user`.
   role            UserRole       @default(user)
+  // The bootstrapped superadmin (created from SUPERADMIN_* env vars). A
+  // superadmin is always an admin too, but its role can't be demoted and the
+  // flag can only be changed by a superadmin (and never unset on oneself).
+  isSuperadmin    Boolean        @default(false) @map("is_superadmin")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 

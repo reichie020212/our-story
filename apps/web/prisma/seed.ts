@@ -14,6 +14,7 @@ import { PrismaClient } from "@prisma/client";
 import "dotenv/config";
 
 import { STORIES, type Story } from "../data/stories";
+import { ensureSuperadmin } from "../scripts/ensure-superadmin";
 
 const SEED_PASSWORD = "password123";
 // Lucia v3's published argon2id parameters.
@@ -152,6 +153,9 @@ async function main() {
       create: { id: "global", approvalRequired: false },
       update: {},
     });
+
+    // Bootstrap the superadmin from SUPERADMIN_* env vars (no-op if unset).
+    await ensureSuperadmin(prisma);
 
     const userCount = await prisma.user.count();
     const storyCount = await prisma.story.count();

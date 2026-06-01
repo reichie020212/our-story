@@ -169,3 +169,15 @@ export async function setApprovalRequired(value: boolean): Promise<void> {
     update: { approvalRequired: value },
   });
 }
+
+/** Set/unset the superadmin flag directly (mints a superadmin for tests
+ *  without the env bootstrap). A superadmin is always an admin too. */
+export async function setSuperadmin(
+  email: string,
+  value: boolean,
+): Promise<void> {
+  await db.user.update({
+    where: { email },
+    data: { isSuperadmin: value, ...(value ? { role: "admin" } : {}) },
+  });
+}

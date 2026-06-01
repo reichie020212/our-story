@@ -66,6 +66,7 @@ export async function POST(req: Request) {
       handle: true,
       initial: true,
       role: true,
+      isSuperadmin: true,
     },
   });
 
