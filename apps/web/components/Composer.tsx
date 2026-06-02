@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { GENRES, LENGTHS } from "@/data/stories";
 import { useAuth } from "./AuthProvider";
+import { DeleteStoryButton } from "./DeleteStoryButton";
 import { apiGet, apiSend, ApiCallError } from "@/lib/client/api";
 import type { AppSettingsResponse } from "@our-story/api-types";
 import type { StoryWire } from "@/lib/story";
@@ -22,6 +23,10 @@ export function Composer({ editSlug }: { editSlug?: string }) {
   const { user } = useAuth();
   const [storyId, setStoryId] = useState<string | null>(null);
   const [storySlug, setStorySlug] = useState<string | null>(null);
+  // Author of the loaded story (edit mode) — used to decide whether to
+  // show the Delete control. Mirrors DELETE /api/v1/stories/[id]: author
+  // or superadmin only.
+  const [authorId, setAuthorId] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [synopsis, setSynopsis] = useState("");
@@ -59,6 +64,7 @@ export function Composer({ editSlug }: { editSlug?: string }) {
         if (cancelled) return;
         setStoryId(story.id);
         setStorySlug(story.slug);
+        setAuthorId(story.author.id);
         setTitle(story.title);
         setSynopsis(story.synopsis);
         setBody(story.body.join("\n\n"));
@@ -96,6 +102,13 @@ export function Composer({ editSlug }: { editSlug?: string }) {
   }, []);
 
   const needsApproval = approvalRequired && user?.role !== "admin";
+
+  // Only an existing, loaded story can be deleted, and only by its author
+  // or the superadmin.
+  const canDelete =
+    !!storyId &&
+    !!user &&
+    (user.isSuperadmin || (authorId !== null && authorId === user.id));
 
   const wordCount = body.trim().split(/\s+/).filter(Boolean).length;
   const readTime = Math.max(1, Math.round(wordCount / 220));
@@ -303,6 +316,17 @@ export function Composer({ editSlug }: { editSlug?: string }) {
                       ? "Submitted for review ✓"
                       : "Draft"}
           </span>
+          {canDelete && storyId && (
+            <DeleteStoryButton
+              idOrSlug={storyId}
+              title={title}
+              onDeleted={() => router.push("/me/drafts")}
+              className="btn btn-ghost composer-delete"
+              triggerTitle="Delete story"
+            >
+              Delete
+            </DeleteStoryButton>
+          )}
           <button
             className="btn-ghost btn"
             onClick={saveDraft}

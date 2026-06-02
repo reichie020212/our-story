@@ -182,7 +182,17 @@ export async function DELETE(
     const blocked = await enforce(writeLimiter(), `u:${user.id}`);
     if (blocked) return blocked;
     const { id } = await params;
-    const story = await loadOwnedStory(id, user.id);
+    const story = await db.story.findFirst({
+      where: { OR: [{ id }, { slug: id }] },
+      select: { id: true, authorId: true, deletedAt: true },
+    });
+    if (!story || story.deletedAt) throw new NotFoundError("Story not found.");
+    // Authors delete their own stories; the single superadmin can delete
+    // anyone's. A plain `admin` gets no special delete power here — they're
+    // limited to their own stories, same as a regular user.
+    if (story.authorId !== user.id && !user.isSuperadmin) {
+      throw new ForbiddenError();
+    }
     await db.story.update({
       where: { id: story.id },
       data: { deletedAt: new Date() },

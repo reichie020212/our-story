@@ -1001,3 +1001,132 @@ describe("superadmin", () => {
     expect(res.body.error.code).toBe("cannot_unset_self_superadmin");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Story deletion: authors delete their own; the superadmin deletes anyone's;
+// a plain admin has no special delete power.
+// ---------------------------------------------------------------------------
+
+describe("story deletion", () => {
+  let superA: MobileAuthResponse;
+  let admin: MobileAuthResponse;
+  let authorA: MobileAuthResponse;
+  let authorB: MobileAuthResponse;
+  const superEmail = uniqueEmail("del-super");
+  const adminEmail = uniqueEmail("del-admin");
+  const authorAEmail = uniqueEmail("del-author-a");
+  const authorBEmail = uniqueEmail("del-author-b");
+
+  const login = async (email: string, name: string) => {
+    await api("/api/v1/auth/mobile/signup", {
+      method: "POST",
+      body: JSON.stringify({ email, password: "password123", name }),
+    });
+    await markEmailVerified(email);
+    const res = await api<MobileAuthResponse>("/api/v1/auth/mobile/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password: "password123" }),
+    });
+    return MobileAuthResponseSchema.parse(res.body);
+  };
+
+  const publishStory = async (auth: MobileAuthResponse, title: string) => {
+    const created = await api<StoryResponse>("/api/v1/stories", {
+      method: "POST",
+      bearer: auth.accessToken,
+      body: JSON.stringify({
+        title,
+        synopsis: "Deletion-flow integration story.",
+        body: ["Paragraph one.", "Paragraph two."],
+      }),
+    });
+    const slug = StoryResponseSchema.parse(created.body).story.slug;
+    await api(`/api/v1/stories/${slug}/publish`, {
+      method: "POST",
+      bearer: auth.accessToken,
+    });
+    return slug;
+  };
+
+  const remove = (slug: string, auth: MobileAuthResponse) =>
+    api(`/api/v1/stories/${slug}`, {
+      method: "DELETE",
+      bearer: auth.accessToken,
+    }).catch(() => {});
+
+  beforeAll(async () => {
+    superA = await login(superEmail, "Del Super");
+    admin = await login(adminEmail, "Del Admin");
+    authorA = await login(authorAEmail, "Del Author A");
+    authorB = await login(authorBEmail, "Del Author B");
+    await setUserRole(adminEmail, "admin");
+    await setSuperadmin(superEmail, true);
+    await setApprovalRequired(false);
+  });
+
+  it("delete without auth is 401", async () => {
+    const slug = await publishStory(authorA, `Auth-gated ${Date.now()}`);
+    const res = await api(`/api/v1/stories/${slug}`, { method: "DELETE" });
+    expect(res.status).toBe(401);
+    await remove(slug, authorA);
+  });
+
+  it("a non-owner regular user cannot delete another's story (403)", async () => {
+    const slug = await publishStory(authorA, `Not yours ${Date.now()}`);
+    const res = await api(`/api/v1/stories/${slug}`, {
+      method: "DELETE",
+      bearer: authorB.accessToken,
+    });
+    expect(res.status).toBe(403);
+    // Still readable — the soft-delete didn't fire.
+    const get = await api(`/api/v1/stories/${slug}`);
+    expect(get.status).toBe(200);
+    await remove(slug, authorA);
+  });
+
+  it("a plain admin has no delete power over another user's story (403)", async () => {
+    const slug = await publishStory(authorA, `Admin no power ${Date.now()}`);
+    const res = await api(`/api/v1/stories/${slug}`, {
+      method: "DELETE",
+      bearer: admin.accessToken,
+    });
+    expect(res.status).toBe(403);
+    await remove(slug, authorA);
+  });
+
+  it("the author can delete their own story (204 → then 404)", async () => {
+    const slug = await publishStory(authorA, `Mine to delete ${Date.now()}`);
+    const del = await api(`/api/v1/stories/${slug}`, {
+      method: "DELETE",
+      bearer: authorA.accessToken,
+    });
+    expect(del.status).toBe(204);
+    const get = await api(`/api/v1/stories/${slug}`);
+    expect(get.status).toBe(404);
+  });
+
+  it("the superadmin can delete anyone's story (204 → then 404)", async () => {
+    const slug = await publishStory(authorB, `Super can delete ${Date.now()}`);
+    const del = await api(`/api/v1/stories/${slug}`, {
+      method: "DELETE",
+      bearer: superA.accessToken,
+    });
+    expect(del.status).toBe(204);
+    const get = await api(`/api/v1/stories/${slug}`);
+    expect(get.status).toBe(404);
+  });
+
+  it("deleting an already-deleted story is 404", async () => {
+    const slug = await publishStory(authorA, `Delete twice ${Date.now()}`);
+    const first = await api(`/api/v1/stories/${slug}`, {
+      method: "DELETE",
+      bearer: authorA.accessToken,
+    });
+    expect(first.status).toBe(204);
+    const second = await api(`/api/v1/stories/${slug}`, {
+      method: "DELETE",
+      bearer: authorA.accessToken,
+    });
+    expect(second.status).toBe(404);
+  });
+});

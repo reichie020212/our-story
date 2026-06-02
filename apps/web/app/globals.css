@@ -1980,6 +1980,76 @@ body[data-theme="ink"]::before {
   background: oklch(46% 0.18 25);
 }
 
+/* Confirmation dialog (destructive actions — e.g. delete a story).
+   Reuses the .auth-overlay backdrop; this is the single-column card. */
+.confirm-modal {
+  width: 100%;
+  max-width: 440px;
+  background: var(--bg-elev);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.4);
+  padding: 28px 28px 24px;
+  animation: pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.confirm-modal h3 {
+  font-family: var(--serif);
+  font-size: 22px;
+  margin: 0 0 12px;
+}
+.confirm-message {
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.confirm-message p {
+  margin: 0;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+/* Delete control on story cards — a quiet trash button in the footer that
+   warms to red on hover. */
+.story-card .footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.story-card .card-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: var(--ink-mute);
+  border: 1px solid transparent;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.story-card .card-delete:hover {
+  color: oklch(52% 0.18 25);
+  border-color: var(--rule);
+  background: var(--bg-sunk);
+}
+
+/* Reader's delete icon-button — same footprint as the like/bookmark icons. */
+.reader .icon-btn.icon-btn-danger:hover {
+  color: oklch(52% 0.18 25);
+  border-color: oklch(52% 0.18 25 / 0.4);
+}
+
+/* Composer delete button — ghost button that reads red. */
+.composer-delete {
+  color: oklch(52% 0.18 25);
+}
+.composer-delete:hover {
+  border-color: oklch(52% 0.18 25 / 0.5);
+}
+
 /* User-management table */
 .admin-user-table {
   display: flex;

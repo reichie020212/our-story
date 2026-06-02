@@ -5,9 +5,17 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { GENRES, LENGTHS } from "@/data/stories";
 import { apiGet } from "@/lib/client/api";
 import type { StoryWire } from "@/lib/story";
-import { useAuth } from "./AuthProvider";
+import { useAuth, type User } from "./AuthProvider";
+import { DeleteStoryButton, TrashIcon } from "./DeleteStoryButton";
 
 type FilterMode = "all" | "published" | "draft";
+
+/** A story is deletable by its author, or by the superadmin (any story).
+ *  Mirrors the server-side rule in DELETE /api/v1/stories/[id]. */
+function canDelete(user: User | null, story: StoryWire): boolean {
+  if (!user) return false;
+  return user.isSuperadmin || story.author.id === user.id;
+}
 
 type Props = {
   title: string;
@@ -125,7 +133,18 @@ export function StoryListPage({
           ) : filtered.length === 0 ? (
             <Centered italic>{error ?? emptyMessage}</Centered>
           ) : (
-            filtered.map((s) => <StoryCardSimple key={s.id} story={s} />)
+            filtered.map((s) => (
+              <StoryCardSimple
+                key={s.id}
+                story={s}
+                canDelete={canDelete(user, s)}
+                onDeleted={() =>
+                  setStories((prev) =>
+                    prev ? prev.filter((x) => x.id !== s.id) : prev,
+                  )
+                }
+              />
+            ))
           )}
         </div>
       </div>
@@ -158,7 +177,15 @@ function Centered({
   );
 }
 
-function StoryCardSimple({ story }: { story: StoryWire }) {
+function StoryCardSimple({
+  story,
+  canDelete: deletable,
+  onDeleted,
+}: {
+  story: StoryWire;
+  canDelete: boolean;
+  onDeleted: () => void;
+}) {
   const router = useRouter();
   const genre = GENRES.find((g) => g.id === story.genre) ?? GENRES[0];
   const length = LENGTHS.find((l) => l.id === story.length) ?? LENGTHS[0];
@@ -227,14 +254,28 @@ function StoryCardSimple({ story }: { story: StoryWire }) {
           </b>{" "}
           · {date}
         </span>
-        <div className="stats">
-          <span>
-            {story.views > 999
-              ? (story.views / 1000).toFixed(1) + "k"
-              : story.views}{" "}
-            reads
-          </span>
-          <span>{story.likes} likes</span>
+        <div className="footer-right">
+          <div className="stats">
+            <span>
+              {story.views > 999
+                ? (story.views / 1000).toFixed(1) + "k"
+                : story.views}{" "}
+              reads
+            </span>
+            <span>{story.likes} likes</span>
+          </div>
+          {deletable && (
+            <DeleteStoryButton
+              idOrSlug={story.slug}
+              title={story.title}
+              onDeleted={onDeleted}
+              className="card-delete"
+              triggerTitle="Delete story"
+              stopPropagation
+            >
+              <TrashIcon />
+            </DeleteStoryButton>
+          )}
         </div>
       </div>
     </article>

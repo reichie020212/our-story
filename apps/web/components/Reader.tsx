@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Fragment, useEffect, useState } from "react";
 import { GENRES } from "@/data/stories";
 import { AdSlot } from "@/components/AdSlot";
 import { useAuth } from "@/components/AuthProvider";
+import { DeleteStoryButton, TrashIcon } from "@/components/DeleteStoryButton";
 import { apiSend } from "@/lib/client/api";
 import type { StoryWire } from "@/lib/story";
 
@@ -21,8 +23,11 @@ export function Reader({
   story: StoryWire;
   signedIn: boolean;
 }) {
-  const { setModal } = useAuth();
+  const { user, setModal } = useAuth();
+  const router = useRouter();
   const genre = GENRES.find((g) => g.id === story.genre) ?? GENRES[0];
+  // Author or superadmin can delete; mirrors DELETE /api/v1/stories/[id].
+  const canDelete = !!user && (user.isSuperadmin || story.author.id === user.id);
   const [liked, setLiked] = useState(!!story.liked);
   const [bookmarked, setBookmarked] = useState(!!story.bookmarked);
   const [likeCount, setLikeCount] = useState(story.likes);
@@ -200,6 +205,17 @@ export function Reader({
               <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
             </svg>
           </button>
+          {canDelete && (
+            <DeleteStoryButton
+              idOrSlug={story.slug}
+              title={story.title}
+              onDeleted={() => router.push("/")}
+              className="icon-btn icon-btn-danger"
+              triggerTitle="Delete story"
+            >
+              <TrashIcon />
+            </DeleteStoryButton>
+          )}
         </div>
       </div>
       <div className="reader-body">
