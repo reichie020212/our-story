@@ -16,8 +16,8 @@
     "db:ensure-superadmin": "tsx scripts/ensure-superadmin.ts"
   },
   "dependencies": {
-    "@our-story/api-types": "workspace:*",
     "@node-rs/argon2": "^2.0.2",
+    "@our-story/api-types": "workspace:*",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@upstash/ratelimit": "^2.0.8",
@@ -25,6 +25,7 @@
     "arctic": "^3.7.0",
     "jose": "^6.2.3",
     "next": "~15.4.11",
+    "nodemailer": "^8.0.10",
     "pg": "^8.20.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@types/node": "^22",
+    "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",

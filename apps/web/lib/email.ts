@@ -1,12 +1,24 @@
 /**
- * Transactional email — Resend over REST.
+ * Transactional email.
  *
- * We don't pull the `resend` SDK to keep the dep graph slim and the
- * cold-start tiny; the API surface we actually use is one POST. When
- * `RESEND_API_KEY` is empty we fall back to logging the link to the
- * server console so local dev without Resend still works (the link
- * shows up in `pnpm dev`'s output).
+ * The verification logic never changes — only the transport, which is
+ * selected from the environment at send time:
+ *
+ *   1. SMTP_HOST set            → send over SMTP (dev → Mailpit, or a
+ *                                  Mailtrap sandbox; any SMTP sink works)
+ *   2. RESEND_API_KEY + _FROM   → send via Resend's REST API (production)
+ *   3. neither                  → log the link to the server console so
+ *                                  local dev works with zero setup
+ *
+ * SMTP takes priority over Resend on purpose: if a real Resend key is
+ * sitting in your local `.env`, dev mail still goes to the local sink
+ * instead of leaking out to real inboxes.
+ *
+ * We don't pull the `resend` SDK (one POST is all we use) and we
+ * lazy-import `nodemailer` only when the SMTP path actually fires, so the
+ * production cold-start — which never touches SMTP — stays lean.
  */
+import type { Transporter } from "nodemailer";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
@@ -24,16 +36,73 @@ export class EmailSendError extends Error {
   }
 }
 
+// ---------- Transport selection ----------
+
+type Transport = "smtp" | "resend" | "console";
+
+function pickTransport(): Transport {
+  if (process.env.SMTP_HOST) return "smtp";
+  if (process.env.RESEND_API_KEY && process.env.RESEND_FROM) return "resend";
+  return "console";
+}
+
+/** The From header. SMTP sinks accept anything; Resend requires a verified
+ *  sender. Falls back so a missing SMTP_FROM in dev isn't fatal. */
+function fromAddress(): string {
+  return (
+    process.env.SMTP_FROM ||
+    process.env.RESEND_FROM ||
+    "OurStory <no-reply@ourstory.test>"
+  );
+}
+
+// ---------- SMTP (dev: Mailpit / Mailtrap sandbox) ----------
+
+let transporter: Transporter | null = null;
+
+async function getSmtpTransport(): Promise<Transporter> {
+  if (transporter) return transporter;
+  // Lazy so nodemailer never loads on the Resend/console paths.
+  const { createTransport } = await import("nodemailer");
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  transporter = createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT ?? "1025"),
+    // 465 = implicit TLS. Mailpit (1025) and Mailtrap sandbox (2525/587)
+    // use no TLS / STARTTLS, so default this off unless asked.
+    secure: process.env.SMTP_SECURE === "true",
+    // Mailpit needs no auth; Mailtrap does — include it only when present.
+    auth: user && pass ? { user, pass } : undefined,
+  });
+  return transporter;
+}
+
+async function sendViaSmtp({ to, subject, html, text }: SendArgs) {
+  try {
+    await (await getSmtpTransport()).sendMail({
+      from: fromAddress(),
+      to,
+      subject,
+      html,
+      text,
+    });
+  } catch (err) {
+    throw new EmailSendError(
+      `SMTP send failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+// ---------- Resend (production) ----------
+
 async function sendViaResend({ to, subject, html, text }: SendArgs) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM;
+  // pickTransport() only routes here when both are set, but keep the
+  // guard so a direct call can't silently send from nowhere.
   if (!apiKey || !from) {
-    // Dev fallback: print the link so it's easy to click in the
-    // terminal. Don't throw — signup still succeeds.
-    console.warn(
-      `[email] RESEND_API_KEY/RESEND_FROM not set; would have sent "${subject}" to ${to}.\n${text}`,
-    );
-    return;
+    throw new EmailSendError("RESEND_API_KEY / RESEND_FROM are not configured.");
   }
 
   const res = await fetch(RESEND_ENDPOINT, {
@@ -49,6 +118,23 @@ async function sendViaResend({ to, subject, html, text }: SendArgs) {
     throw new EmailSendError(
       `Resend rejected the email: ${res.status} ${detail.slice(0, 200)}`,
     );
+  }
+}
+
+/** Route an email through whichever transport the environment selects. */
+async function deliver(args: SendArgs): Promise<void> {
+  switch (pickTransport()) {
+    case "smtp":
+      return sendViaSmtp(args);
+    case "resend":
+      return sendViaResend(args);
+    default:
+      // Dev fallback: print the link so it's easy to click in the
+      // terminal. Don't throw — signup still succeeds.
+      console.warn(
+        `[email] no transport configured (set SMTP_HOST or RESEND_API_KEY/RESEND_FROM); ` +
+          `would have sent "${args.subject}" to ${args.to}.\n${args.text}`,
+      );
   }
 }
 
@@ -118,5 +204,5 @@ The link expires in 24 hours. If you didn't sign up, you can ignore this email.
     </p>
   </div>
 </body></html>`;
-  await sendViaResend({ to, subject, html, text });
+  await deliver({ to, subject, html, text });
 }
