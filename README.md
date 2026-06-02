@@ -57,6 +57,8 @@ pnpm mobile start             # → Expo dev tools, scan QR with Expo Go
 # For physical devices: EXPO_PUBLIC_API_BASE_URL=http://<lan-ip>:3000 pnpm mobile start
 ```
 
+For the full walkthrough — JWT key generation, the superadmin, local email testing with Mailpit, and troubleshooting — see **`DEVELOPMENT.md`**.
+
 ## Common commands
 
 | Command | What it does |
